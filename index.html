@@ -103,6 +103,7 @@
         if (!file) return;
 
         Papa.parse(file, {
+            encoding: "Shift-JIS",
             complete: function(results) {
                 // CSVの1列目をキー、2列目を値として登録
                 results.data.forEach(row => {
@@ -226,4 +227,5 @@
 </script>
 
 </body>
+
 </html>
