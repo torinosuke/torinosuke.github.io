@@ -127,29 +127,19 @@
         document.getElementById('stopScanBtn').classList.remove('hidden');
 
         html5QrCode = new Html5Qrcode("reader");
-        const config = {
-            fps: 5,
-            formatsToSupport: [
-                Html5QrcodeSupportedFormats.RSS_14
-            ],
-            videoConstraints: {
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
-            }
+        const config = { 
+            fps: 10, 
+            qrbox: { width: 250, height: 150 },
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.RSS_14, // GS1 Databar
+                Html5QrcodeSupportedFormats.RSS_EXPANDED 
+            ]
         };
-        html5Qrcode.getCameras().then(devices => {
-            console.log(devices);
-        });
-        html5QrCode.start(
-            { facingMode: "environment" },
-            config,
-            onScanSuccess
-        )
-        .then(() => {
-            const track = html5QrCode.getRunningTrack();
-            console.log(track.getSettings());
-        });
+
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
     });
+
     document.getElementById('stopScanBtn').addEventListener('click', stopCamera);
 
     function stopCamera() {
