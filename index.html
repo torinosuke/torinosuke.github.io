@@ -122,14 +122,14 @@
 
     // --- 2. バーコードスキャン処理 ---
     document.getElementById('startScanBtn').addEventListener('click', () => {
-        /*const backCamera = devices.find(device =>
-        device.label.includes("facing back")
+        const backCamera = devices.find(device =>
+            device.label.includes("facing back")
         );
 
         if (!backCamera) {
             alert("背面カメラが見つかりません");
             return;
-        }*/
+        }
         
         document.getElementById('reader').style.display = "block";
         document.getElementById('startScanBtn').classList.add('hidden');
