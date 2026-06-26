@@ -136,20 +136,10 @@
                 Html5QrcodeSupportedFormats.RSS_EXPANDED 
             ]
         };
-
-        html5QrCode.start(
-            {
-                facingMode: { ideal: "environment" },
-            },
-            config,
-            onScanSuccess
+        
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess
         ).then(() => {
-        
-            const track = html5QrCode.getRunningTrack();
-            const settings = track.getSettings();
-        
-            document.getElementById("cameraInfo").innerText =
-                `解像度: ${settings.width} × ${settings.height}`;
+            console.log("カメラ起動成功");
         });
     });
 
