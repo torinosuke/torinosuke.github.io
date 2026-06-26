@@ -128,16 +128,29 @@
 
         html5QrCode = new Html5Qrcode("reader");
         const config = { 
-            fps: 10, 
-            qrbox: { width: 250, height: 150 },
+            fps: 5, 
             formatsToSupport: [ 
-                Html5QrcodeSupportedFormats.EAN_13, 
                 Html5QrcodeSupportedFormats.RSS_14, // GS1 Databar
-                Html5QrcodeSupportedFormats.RSS_EXPANDED 
             ]
         };
 
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+        html5QrCode.start(
+            {
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            },
+            config,
+            onScanSuccess
+        ).then(() => {
+        
+            const track = html5QrCode.getRunningTrack();
+            const settings = track.getSettings();
+        
+            document.getElementById("cameraInfo").innerText =
+                `解像度: ${settings.width} × ${settings.height}`;
+        
+        });
     });
 
     document.getElementById('stopScanBtn').addEventListener('click', stopCamera);
