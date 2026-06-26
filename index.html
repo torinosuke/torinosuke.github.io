@@ -139,6 +139,8 @@
         
         html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess
         ).then(() => {
+            const track = html5QrCode.getRunningTrack();
+            console.log(track.getSettings());
             console.log("カメラ起動成功");
         })
         .catch(err => {
