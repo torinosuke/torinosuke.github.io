@@ -137,7 +137,18 @@
             ]
         };
 
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+        html5QrCode.start(
+            facingMode: { ideal: "environment" },
+            config,
+            onScanSuccess
+        )
+        .then(() => {
+            console.log("カメラ起動成功");
+        })
+        .catch(err => {
+            alert(err);
+            console.error(err);
+        });
     });
 
     document.getElementById('stopScanBtn').addEventListener('click', stopCamera);
