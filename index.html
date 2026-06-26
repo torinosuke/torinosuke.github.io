@@ -142,6 +142,7 @@
             { facingMode: "environment" },
             config,
             onScanSuccess
+        )
         .then(() => {
             const track = html5QrCode.getRunningTrack();
             console.log(track.getSettings());
