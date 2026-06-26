@@ -122,9 +122,14 @@
 
     // --- 2. バーコードスキャン処理 ---
     document.getElementById('startScanBtn').addEventListener('click', () => {
-        Html5Qrcode.getCameras().then(devices => {
-        alert(JSON.stringify(devices, null, 2));
-        });
+        const backCamera = devices.find(device =>
+        device.label.includes("facing back")
+        );
+
+        if (!backCamera) {
+            alert("背面カメラが見つかりません");
+            return;
+        }
         
         document.getElementById('reader').style.display = "block";
         document.getElementById('startScanBtn').classList.add('hidden');
@@ -141,7 +146,7 @@
             ]
         };
         
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess
+        html5QrCode.start(backCamera.id , config, onScanSuccess
         ).then(() => {
             console.log("カメラ起動成功");
         })
