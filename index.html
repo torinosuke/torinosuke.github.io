@@ -122,6 +122,10 @@
 
     // --- 2. バーコードスキャン処理 ---
     document.getElementById('startScanBtn').addEventListener('click', () => {
+        Html5Qrcode.getCameras().then(devices => {
+        alert(JSON.stringify(devices, null, 2));
+        });
+        
         document.getElementById('reader').style.display = "block";
         document.getElementById('startScanBtn').classList.add('hidden');
         document.getElementById('stopScanBtn').classList.remove('hidden');
