@@ -146,7 +146,7 @@
             ]
         };
         
-        html5QrCode.start(backCamera.id , config, onScanSuccess
+        html5QrCode.start({ facingMode: "environment" } , config, onScanSuccess
         ).then(() => {
             console.log("カメラ起動成功");
         })
