@@ -138,16 +138,18 @@
         };
 
         html5QrCode.start(
-            facingMode: { ideal: "environment" },
+            {
+                facingMode: { ideal: "environment" },
+            },
             config,
             onScanSuccess
-        )
-        .then(() => {
-            console.log("カメラ起動成功");
-        })
-        .catch(err => {
-            alert(err);
-            console.error(err);
+        ).then(() => {
+        
+            const track = html5QrCode.getRunningTrack();
+            const settings = track.getSettings();
+        
+            document.getElementById("cameraInfo").innerText =
+                `解像度: ${settings.width} × ${settings.height}`;
         });
     });
 
