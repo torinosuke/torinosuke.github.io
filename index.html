@@ -127,10 +127,21 @@
         document.getElementById('stopScanBtn').classList.remove('hidden');
 
         html5QrCode.start(
-            { facingMode: "environment" },
+            {
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            },
             config,
             onScanSuccess
         )
+        .then(() => {
+            console.log("カメラ起動成功");
+        })
+        .catch(err => {
+            alert(err);
+            console.error(err);
+        });
     });
     document.getElementById('stopScanBtn').addEventListener('click', stopCamera);
 
