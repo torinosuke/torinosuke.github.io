@@ -161,11 +161,7 @@
             
                 document.getElementById("cameraInfo").innerText =
                     JSON.stringify(caps, null, 2);
-                track.applyConstraints({
-                    advanced: [
-                        { zoom: 2.0 }
-                    ]
-                });
+            
             }).catch(err => {
                 alert(err);
                 console.error(err);
