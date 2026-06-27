@@ -57,6 +57,7 @@
     <div id="step2" class="hidden">
         <h3>② 在庫スキャン</h3>
         <div id="reader"></div>
+        <div id="cameraInfo"></div>
         <button id="startScanBtn" class="btn-blue">📷 カメラを起動してスキャン</button>
         <button id="stopScanBtn" class="btn-gray hidden">カメラを停止</button>
 
@@ -151,7 +152,17 @@
                 backCamera.id,
                 config,
                 onScanSuccess
-            );
+            ).then(() => {
+            
+                const track =
+                    document.querySelector("video").srcObject.getVideoTracks()[0];
+            
+                const caps = track.getCapabilities();
+            
+                document.getElementById("cameraInfo").innerText =
+                    JSON.stringify(caps, null, 2);
+            
+            });
     
         }).catch(err => {
             alert(err);
