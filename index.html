@@ -123,70 +123,78 @@
 
     // --- 2. バーコードスキャン処理 ---
     document.getElementById('startScanBtn').addEventListener('click', () => {
-
-    document.getElementById('reader').style.display = "block";
-    document.getElementById('startScanBtn').classList.add('hidden');
-    document.getElementById('stopScanBtn').classList.remove('hidden');
-
-    html5QrCode = new Html5Qrcode("reader");
-
-    const config = {
-        fps: 5,
-        formatsToSupport: [
-            Html5QrcodeSupportedFormats.RSS_14
-        ]
-    };
-
-    Html5Qrcode.getCameras()
-        .then(devices => {
-
-            const backCamera = devices.find(device =>
-                device.label.includes("facing back")
-            );
-
-            if (!backCamera) {
-                alert("背面カメラが見つかりません");
-                return;
-            }
-
-            return html5QrCode.start(
-                backCamera.id,
-                config,
-                onScanSuccess
-            );
-
-        })
-        .then(() => {
-
-            const track =
-                document.querySelector("video").srcObject.getVideoTracks()[0];
-
-            // まず2倍ズーム
-            return track.applyConstraints({
-                advanced: [
-                    { zoom: 2.0 }
-                ]
-            }).then(() => {
-
+    
+        document.getElementById('reader').style.display = "block";
+        document.getElementById('startScanBtn').classList.add('hidden');
+        document.getElementById('stopScanBtn').classList.remove('hidden');
+    
+        html5QrCode = new Html5Qrcode("reader");
+    
+        const config = {
+            fps: 10,
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.RSS_14
+            ]
+        };
+    
+        Html5Qrcode.getCameras()
+            .then(devices => {
+    
+                const backCamera = devices.find(device =>
+                    device.label.includes("facing back")
+                );
+    
+                if (!backCamera) {
+                    alert("背面カメラが見つかりません");
+                    return;
+                }
+    
+                return html5QrCode.start(
+                    backCamera.id,
+                    config,
+                    onScanSuccess
+                );
+    
+            })
+            .then(async () => {
+    
+                const track =
+                    document.querySelector("video").srcObject.getVideoTracks()[0];
+    
+                // 最大解像度を要求
+                await track.applyConstraints({
+                    width: { ideal: 4000 },
+                    height: { ideal: 3000 }
+                });
+    
+                // まず2倍ズーム
+                await track.applyConstraints({
+                    advanced: [
+                        { zoom: 2.0 }
+                    ]
+                });
+    
                 const settings = track.getSettings();
-
-                console.log("現在の設定", settings);
-
-                // 確認用
+                const capabilities = track.getCapabilities();
+    
                 alert(
                     "解像度: " +
                     settings.width +
                     " x " +
-                    settings.height
+                    settings.height +
+                    "\nズーム: " +
+                    (settings.zoom || "不明")
                 );
+    
+                console.log("Settings", settings);
+                console.log("Capabilities", capabilities);
+    
+            })
+            .catch(err => {
+                console.error(err);
+                alert(err);
             });
-
-        })
-        .catch(err => {
-            console.error(err);
-            alert(err);
-        });
-
+    
     });
 
     document.getElementById('stopScanBtn').addEventListener('click', stopCamera);
