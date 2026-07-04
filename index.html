@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>💊 簡易棚卸アプリ (ImportMap修正版)</title>
+    <title>💊 簡易棚卸アプリ (高速マスタ読み込み版)</title>
     
-    <!-- 📦 ブラウザにモジュールの正確な居場所を教えるマップを追加 -->
     <script type="importmap">
     {
       "imports": {
@@ -162,7 +161,7 @@
 </head>
 <body>
 
-    <h3>💊 簡易棚卸アプリ (ImportMap修正版)</h3>
+    <h3>💊 簡易棚卸アプリ (高速マスタ読み込み版)</h3>
 
     <!-- ① マスタ読込エリア -->
     <div class="card">
@@ -215,7 +214,6 @@
     </div>
 
     <script type="module">
-        // Import Mapにより、名前だけで正しく読み込めるようになります
         import * as ScanditCore from "scandit-web-datacapture-core";
         import * as ScanditBarcode from "scandit-web-datacapture-barcode";
 
@@ -246,46 +244,55 @@
             log("警告: 現在安全な接続(HTTPS)ではありません。カメラ機能は動作しません。", true);
         }
 
-        // --- 1. CSVマスタ読み込み ---
+        // --- 1. CSVマスタ読み込み (10万件高速化対応) ---
         document.getElementById('filePicker').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             document.getElementById('statusLog').innerHTML = ""; 
-            log("CSVファイルの読み込みを開始しました...");
+            log("CSVファイルの読み込みを開始しました（高速解析モード）...");
 
             const reader = new FileReader();
             reader.readAsText(file, 'Shift-JIS');
             reader.onload = function(evt) {
                 try {
                     masterData.clear();
+                    
+                    // 改行コードで一気に分割
                     const lines = evt.target.result.split(/\r\n|\n/);
+                    const totalLines = lines.length;
+                    log(`ファイル展開完了。総行数: ${totalLines}行。パース中...`);
 
-                    lines.forEach((line, index) => {
-                        if (!line.trim() || index === 0) return; 
-                        const tokens = line.split(',').map(t => t.trim().replace(/^"|"$/g, ''));
+                    // ループ処理の限界高速化
+                    for (let i = 1; i < totalLines; i++) {
+                        const line = lines[i];
+                        if (!line) continue;
+
+                        // カンマ分割とダブルクォーテーションの超高速一括除去
+                        const tokens = line.split(',');
+                        if (tokens.length < 35) continue;
+
+                        // 必要な列だけピンポイントで抽出（トリムと引用符除去を軽量化）
+                        const name = tokens[3].replaceAll('"', '').trim();        
+                        const pkgQty = tokens[23] ? tokens[23].replaceAll('"', '').trim() : "1"; 
+                        const pkgUnit = tokens[24] ? tokens[24].replaceAll('"', '').trim() : "個"; 
+                        const dispQty = tokens[25] ? tokens[25].replaceAll('"', '').trim() : "1"; 
+                        const dispUnit = tokens[26] ? tokens[26].replaceAll('"', '').trim() : "個"; 
                         
-                        if (tokens.length >= 35) {
-                            const name = tokens[3];        
-                            const pkgQty = tokens[23] || "1"; 
-                            const pkgUnit = tokens[24] || "個"; 
-                            const dispQty = tokens[25] || "1"; 
-                            const dispUnit = tokens[26] || "個"; 
-                            
-                            const codeChozai = tokens[23]; 
-                            const codeMotoko = tokens[29]; 
-                            const codeHanbai = tokens[32]; 
+                        const codeChozai = tokens[23] ? tokens[23].replaceAll('"', '').trim() : ""; 
+                        const codeMotoko = tokens[29] ? tokens[29].replaceAll('"', '').trim() : ""; 
+                        const codeHanbai = tokens[32] ? tokens[32].replaceAll('"', '').trim() : ""; 
 
-                            if (codeChozai && codeChozai !== "") masterData.set(codeChozai, { drugName: name, pkgQty: pkgQty, pkgUnit: pkgUnit });
-                            if (codeMotoko && codeMotoko !== "") masterData.set(codeMotoko, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
-                            if (codeHanbai && codeHanbai !== "") masterData.set(codeHanbai, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
-                        }
-                    });
+                        // 有効なコードのみMapに登録（無駄な判定文を排除）
+                        if (codeChozai) masterData.set(codeChozai, { drugName: name, pkgQty: pkgQty, pkgUnit: pkgUnit });
+                        if (codeMotoko) masterData.set(codeMotoko, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
+                        if (codeHanbai) masterData.set(codeHanbai, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
+                    }
 
                     const statusText = document.getElementById('tvMasterStatus');
                     statusText.textContent = `✅ 読込完了: ${masterData.size}件のコードを登録`;
                     statusText.style.color = '#388E3C';
-                    log(`CSV解析成功。マスタ件数: ${masterData.size}件`);
+                    log(`🎉 10万件規模のマスタを高速解析しました。登録データ: ${masterData.size}件`);
 
                     document.getElementById('scanSection').style.display = 'block';
                     startCameraProcess();
@@ -308,10 +315,9 @@
 
         // --- 2. Scandit Web SDK 初期化 & 起動 ---
         async function initAndStartScandit() {
-            // モジュールを1つのオブジェクトに統合
             const Scandit = { ...ScanditCore, ...ScanditBarcode };
             
-            const sKey = "AmSXwDnyHhQ/Ip+Pt+WGnXInQkDtGo07phG2O1sQO31eRbEEAWkAXhdg5LBsSFHvcmbPIC16oiXPM3zb+lyqNI9GooXhbNyoung4Yd4eIGq8GrwEJh3m/04BLa4aMUst/lhFdp5bKUG9YIqAxH/PCGBFYFMvL/oGjlCR4BRoHNtSYHhLdVmBRrY9gHdoTVNlkE6I7V9wnRdoBgUp3lE88OYUg42fQ5QJVExaJYx27tLzcoO24keKxGULIZ64TSrI13EUAuxAVlwnIveSl2jXTp9zg1WvN9hulDk0aYpuZ3l3UQ2/Snx3XKxxqMuifNWrymzS1PIXUlwAecXhkiO56el63vbyS4pAVUxXRL5jc2MfZ9HyLGrhxFFc1Ab6fCiDkFl5He591v6cb5nPK1C2/xh5smMeZR1i61peG4lTZou8TVlxTFGdJ+RqgBibfLO8El3WDg4Q6usHQTGTL0DKplA1b+MWXyxVY0vpqJZ6i1S7CYHABGTecet1izfHe9NjIEaD92I4qYGyXJs4QnI3kBhyuxXZGLgasHAy1SxuTENzMYDWAVEnUeBePRrHcZu8ezsmKl0pMMoBZ1gZ8nxypZ1D6Y5ja4rJ307p5ItqRsbPDD102gzRDKE8c0ndVNuQc2SXpWhmZ61DHAGzRGxNPCdlAjbmSP8mz2kX71dMZk3wSGFxCW2nNfkxWFRuaPtImUppu69O1RiSQJD4xFNBFxps4J/jRiqa6XIMStl+SJnKfZhxGnSwnq1+nLUddq5ZymwQLSBnISIhRv863SjutWlD0/l5NXpEoV5PB1hZO3WuV0aNBXgp63l+cviwZxO+On3FJ11Zoim3Q5cQq2wHMghBmOlXelK1NQXlR99mIz0vWWhvImIObhwt9q+pXRLx8W29oSd9X+/FJO+0oEilDI1fH3smGfMBglHyQS5B08aTVhzQEUgPme1YhXA+V74ZhT0dpkEgrlBuCiNShGW5lXB9SWZsQjwvmN/DWQd6quyXjMjBGynoeoV7Ziq5ulEuL1giwmD1v+WHy3EqMiJJJ4x2Q5wHRgzp6rvNAt66VvEq7tJFPQbZzcNrrARzZfvudNw2C5Ks6qr2iwY5QOITTF3zlxFPDSE73frOYymmM23I0toSZiuISSqvCxYlfw5bVXzPXmm3KPF92JqQzdVCFVSZVUJXYK5CG4eGD0Tgo1aAeKCVKBH2kNYM6SKEqdNdSUX9EBj5RpeTned7/DkxqVerGUWF/TW9QYPV1R185qVCCrkY+JNvZ2xRDClZp0V+jXOv6nl1NVvObcAV4doVvk0/4hGN/ideOgtSPtc2QsG2rznYf2FJPOz3P4yFuFtZoLoRVoaH/e0NnE6vsE23Wcw/5Y6rhMfs9ll9xoNqkCkc0wgcatCjnNe8WG7ajHvPvqADfAW1cfiXw1449goQVZMWdXqjWFDa37qXk1tzA4Fcsyfuc5e/6hTRFZ8JcblCTwzDgvgk9iPupEzn73ef+CX49QjBQ0WlJieVfmjia2nXJ3LfbuoW+89FosFb/qTjMJWH5dYyRBrDLSJNptKIQUZD7/C+6Qe5S87GH569fU9RszyQvTCAhkuiSs7RPfDNOiKRbpu8NFF7MFF3Vw0J2Ky+ARKSVqDUFN/WFabe8r9SmtLVXYZOdI5oU2ITSisRINLM=";
+            const sKey = "AmSXwDnyHhQ/Ip+Pt+WGnXInQkDtGo07phG2O1sQO31eRbEEAWkAXhdg5LBsSFHvcmbPIC16oiXPM3zb+lyqNI9GooXhbNyoung4Yd4eIGq8GrwEJh3m/04BLa4aMUst/lhFdp5bKUG9YIqAxH/PCGBFYFMvL/oGjlCR4BRoHNtSYHhLdVmBRrY9gHdoTVNlkE6I7V9wnRdoBgUp3lE88OYUg42fQ5QJVExaJYx27tLzcoO24keKxGULIZ64TSrI13EUAuxAVlwnIveSl2jXTp9zg1WvN9hulDk0aYpuZ3l3UQ2/Snx3XKxxqMuifNWrymzS1PIXUlwAecXhkiO56el63vbyS4pAVUxXRL5jc2MfZ9HyLGrhxFFc1Ab6fCiDkFl5He591v6cb5nPK1C2/xh5smMeZR1i61peG4lTZou8TVlxTFGdJ+RqgBibfLO8El3WDg4Q6usHQTGTL0DKplA1b+MWXyxVY0vpqJZ6i1S7CYHABGTecet1izfHe9NjIEaD92I4qYGyXJs4QnI3kBhyuxXZGLgasHAy1SxuTENzMYDWAVEnUeBePRrHcZu8ezsmKl0pMMoBZ1gZ8nxypZ1D6Y5ja4rJ307p5ItqRsbPDD102gzRDKE8c0ndVNuQc2SXpWhmZ61DHAGzRGxNPCdlAjbmSP8mz2kX71dMZk3wSGFxCW2nNfkxWFRuaPtImUppu69O1RiSQJD4xFNBFxps4J/jRiqa6XIMStl+SJnKfZhxGnSwnq1+nLUddq5ZymwQLSBnISIhRv863SjutWlD0/l5NXpEoV5PB1hZO3WuV0aNBXgp63l+cviwZxO+On3FJ11Zoim3Q5cQq2wHMghBmOlXelK1NQXlR99mIz0vWWhvImIObhwt9q+pXRLx8W29oSd9X+/FJO+0oEilDI1fH3smGfMBglHyQS5B08aTVhzQEUgPme1YhXA+V74ZhT0dpkEgrlBuCiNShGW5lXB9SWZsQjwvmN/DWQd6quyXjMjBGynoeoV7Ziq5ulEuL1giwmD1v+WHy3EqMiJJJ4x2Q5wHRgzp6rvNAt66VvEq7tJFPQbZzcNrrARzZfvudNw2C5Ks6qr2iwY5QOITTF3zlxFPDSE73frOYymmM23I0toSZiuISSqvCxYlfw5bVXzPXmm3KPF92JqQzdVCFVSZVUJXYK5CG4eGD0Tgo1aAeKCVKBH2kNYM6SKEqdNdSUX9EBj5RpeTned7/DkxqVerGUWF/TW9QYPV1R185qVCCrkY+JNvZ2xRDClZp0V+jXOv6nl1NVvObcAV4doVvk0/4hGN/ideOgtSPtc2QsG2rznYf2FJPOz3P4yFuFtZoLoRVoaH/e0NnE6vsE23Wcw/5Y6rhMfs9ll9xoNqkCkc0wgcatCjnNe8WG7ajHvPvqADfAW1cfiXw1449goQVZMWdXqjWFDa37qXk1tzA4Fcsyfuc5e/6hTRFZ8JcblCTwzDgvgk9iPupEzn73ef+CX49QjBQ0WlJieVfmjia2nXJ3LfbuoW+89FosFb/®TjMJWH5dYyRBrDLSJNptKIQUZD7/C+6Qe5S87GH569fU9RszyQvTCAhkuiSs7RPfDNOiKRbpu8NFF7MFF3Vw0J2Ky+ARKSVqDUFN/WFabe8r9SmtLVXYZOdI5oU2ITSisRINLM=";
 
             log("Scanditの設定(Configure)を開始します...");
             await Scandit.configure({
