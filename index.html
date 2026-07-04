@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>💊 簡易棚卸アプリ (安全対策版)</title>
+    <title>💊 簡易棚卸アプリ (ログ強化版)</title>
     
     <style>
         body {
@@ -49,9 +49,6 @@
             box-sizing: border-box;
             box-shadow: 0 2px 2px rgba(0,0,0,0.2);
         }
-        .file-upload-label:active {
-            background-color: #0b7dda;
-        }
 
         button {
             width: 100%;
@@ -81,8 +78,8 @@
         }
         #previewView {
             width: 100%;
-            height: 180px;
-            background-color: #000000;
+            height: 250px; /* 少し広げました */
+            background-color: #111111;
             border-radius: 4px;
             overflow: hidden;
             position: relative;
@@ -115,35 +112,14 @@
             text-align: right;
             margin-left: 8px;
         }
-        #tvInputUnit {
-            margin-left: 8px;
-            color: #004D40;
-            font-size: 15px;
-        }
-        .flex-buttons {
-            display: flex;
-            gap: 8px;
-        }
+        #tvInputUnit { margin-left: 8px; color: #004D40; font-size: 15px; }
+        .flex-buttons { display: flex; gap: 8px; }
         
-        .list-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            font-weight: bold;
-        }
+        .list-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: bold; }
         #tvCount { color: #00796B; }
         
-        .action-grid {
-            display: flex;
-            gap: 4px;
-            margin: 6px 0;
-        }
-        .action-grid button {
-            flex: 1;
-            font-size: 11px;
-            padding: 6px 4px;
-        }
+        .action-grid { display: flex; gap: 4px; margin: 6px 0; }
+        .action-grid button { flex: 1; font-size: 11px; padding: 6px 4px; }
         #btnExportCSV { background-color: #757575; }
         #btnPrintAll { background-color: #00796B; }
         #btnClearAll { background-color: #D32F2F; }
@@ -159,16 +135,19 @@
             max-height: 200px;
             overflow-y: auto;
         }
-        .list-item-clickable {
-            border-bottom: 1px dashed #CCC;
-            padding: 6px 0;
-            cursor: pointer;
-        }
-        #errorLog {
-            color: red;
-            font-size: 11px;
-            margin-top: 5px;
+        .list-item-clickable { border-bottom: 1px dashed #CCC; padding: 6px 0; cursor: pointer; }
+        
+        /* ログ表示エリア */
+        #statusLog {
+            background-color: #FFFDE7;
+            border: 1px solid #FFF59D;
+            color: #5D4037;
+            font-size: 12px;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 4px;
             white-space: pre-wrap;
+            font-family: monospace;
         }
     </style>
 </head>
@@ -184,11 +163,12 @@
         </label>
         <input type="file" id="filePicker" accept=".csv" style="display: none;">
         <div id="tvMasterStatus">❌ マスタ未読込</div>
-        <div id="errorLog"></div>
+        <div id="statusLog">ここに状況ログが表示されます</div>
     </div>
 
     <!-- ② 在庫スキャンエリア -->
     <div id="scanSection">
+        <div class="title-sm">② バーコードをスキャン</div>
         <div id="previewView"></div>
     </div>
 
@@ -226,7 +206,6 @@
     </div>
 
     <script type="module">
-        // データ管理用グローバル
         const masterData = new Map();
         const scannedList = [];
         
@@ -239,12 +218,29 @@
         let camera = null;
         let view = null;
 
-        // --- 1. CSVマスタ読み込み（独立処理・エラー巻き込み防止） ---
+        function log(message, isError = false) {
+            const logDiv = document.getElementById('statusLog');
+            if (isError) {
+                logDiv.innerHTML += `<span style="color:red; font-weight:bold;">[ERROR] ${message}</span>\n`;
+                logDiv.style.backgroundColor = '#FFEBEE';
+            } else {
+                logDiv.innerHTML += `[INFO] ${message}\n`;
+            }
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // URLがHTTPSかどうかチェック
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            log("警告: 現在安全な接続(HTTPS)ではありません。ブラウザのセキュリティ制限によりカメラが起動しない可能性が非常に高いです。確認してください。", true);
+        }
+
+        // --- 1. CSVマスタ読み込み ---
         document.getElementById('filePicker').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('errorLog').textContent = ""; // ログクリア
+            document.getElementById('statusLog').innerHTML = ""; // ログクリア
+            log("CSVファイルの読み込みを開始しました...");
 
             const reader = new FileReader();
             reader.readAsText(file, 'Shift-JIS');
@@ -255,10 +251,8 @@
 
                     lines.forEach((line, index) => {
                         if (!line.trim() || index === 0) return; 
-                        
                         const tokens = line.split(',').map(t => t.trim().replace(/^"|"$/g, ''));
                         
-                        // 44列フォーマットから必要データを抽出
                         if (tokens.length >= 35) {
                             const name = tokens[3];        
                             const pkgQty = tokens[23] || "1"; 
@@ -270,58 +264,55 @@
                             const codeMotoko = tokens[29]; 
                             const codeHanbai = tokens[32]; 
 
-                            if (codeChozai && codeChozai !== "") {
-                                masterData.set(codeChozai, { drugName: name, pkgQty: pkgQty, pkgUnit: pkgUnit });
-                            }
-                            if (codeMotoko && codeMotoko !== "") {
-                                masterData.set(codeMotoko, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
-                            }
-                            if (codeHanbai && codeHanbai !== "") {
-                                masterData.set(codeHanbai, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
-                            }
+                            if (codeChozai && codeChozai !== "") masterData.set(codeChozai, { drugName: name, pkgQty: pkgQty, pkgUnit: pkgUnit });
+                            if (codeMotoko && codeMotoko !== "") masterData.set(codeMotoko, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
+                            if (codeHanbai && codeHanbai !== "") masterData.set(codeHanbai, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
                         }
                     });
 
                     const statusText = document.getElementById('tvMasterStatus');
                     statusText.textContent = `✅ 読込完了: ${masterData.size}件のコードを登録`;
                     statusText.style.color = '#388E3C';
+                    log(`CSV解析成功。マスタ件数: ${masterData.size}件`);
 
-                    // カメラの起動処理（エラーが起きてもCSVの表示は維持する）
-                    try {
-                        document.getElementById('scanSection').style.display = 'block';
-                        initAndStartScandit();
-                    } catch (scanditErr) {
-                        console.error(scanditErr);
-                        document.getElementById('errorLog').textContent = `【カメラ初期化エラー】マスタは読み込めましたが、カメラの起動に失敗しました:\n${scanditErr.message}`;
-                    }
+                    // カメラ起動へ進む
+                    document.getElementById('scanSection').style.display = 'block';
+                    startCameraProcess();
 
                 } catch (err) {
-                    document.getElementById('errorLog').textContent = `【CSV解析エラー】:${err.message}`;
+                    log(`CSV解析中にエラーが発生しました: ${err.message}`, true);
                 }
             };
         });
 
+        async function startCameraProcess() {
+            try {
+                log("Scanditライブラリのロードを試みています...");
+                await initAndStartScandit();
+            } catch (scanditErr) {
+                log(`カメラ起動プロセス全体で致命的なエラー: ${scanditErr.name} - ${scanditErr.message}`, true);
+                console.error(scanditErr);
+            }
+        }
+
         // --- 2. Scandit Web SDK 初期化 & 起動 ---
         async function initAndStartScandit() {
-            // 動的インポートに変更し、マスタ読み込み後に実行
             const Scandit = await import("https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.js");
+            log("Scanditモジュールのインポート成功。");
 
             const sKey = "AmSXwDnyHhQ/Ip+Pt+WGnXInQkDtGo07phG2O1sQO31eRbEEAWkAXhdg5LBsSFHvcmbPIC16oiXPM3zb+lyqNI9GooXhbNyoung4Yd4eIGq8GrwEJh3m/04BLa4aMUst/lhFdp5bKUG9YIqAxH/PCGBFYFMvL/oGjlCR4BRoHNtSYHhLdVmBRrY9gHdoTVNlkE6I7V9wnRdoBgUp3lE88OYUg42fQ5QJVExaJYx27tLzcoO24keKxGULIZ64TSrI13EUAuxAVlwnIveSl2jXTp9zg1WvN9hulDk0aYpuZ3l3UQ2/Snx3XKxxqMuifNWrymzS1PIXUlwAecXhkiO56el63vbyS4pAVUxXRL5jc2MfZ9HyLGrhxFFc1Ab6fCiDkFl5He591v6cb5nPK1C2/xh5smMeZR1i61peG4lTZou8TVlxTFGdJ+RqgBibfLO8El3WDg4Q6usHQTGTL0DKplA1b+MWXyxVY0vpqJZ6i1S7CYHABGTecet1izfHe9NjIEaD92I4qYGyXJs4QnI3kBhyuxXZGLgasHAy1SxuTENzMYDWAVEnUeBePRrHcZu8ezsmKl0pMMoBZ1gZ8nxypZ1D6Y5ja4rJ307p5ItqRsbPDD102gzRDKE8c0ndVNuQc2SXpWhmZ61DHAGzRGxNPCdlAjbmSP8mz2kX71dMZk3wSGFxCW2nNfkxWFRuaPtImUppu69O1RiSQJD4xFNBFxps4J/jRiqa6XIMStl+SJnKfZhxGnSwnq1+nLUddq5ZymwQLSBnISIhRv863SjutWlD0/l5NXpEoV5PB1hZO3WuV0aNBXgp63l+cviwZxO+On3FJ11Zoim3Q5cQq2wHMghBmOlXelK1NQXlR99mIz0vWWhvImIObhwt9q+pXRLx8W29oSd9X+/FJO+0oEilDI1fH3smGfMBglHyQS5B08aTVhzQEUgPme1YhXA+V74ZhT0dpkEgrlBuCiNShGW5lXB9SWZsQjwvmN/DWQd6quyXjMjBGynoeoV7Ziq5ulEuL1giwmD1v+WHy3EqMiJJJ4x2Q5wHRgzp6rvNAt66VvEq7tJFPQbZzcNrrARzZfvudNw2C5Ks6qr2iwY5QOITTF3zlxFPDSE73frOYymmM23I0toSZiuISSqvCxYlfw5bVXzPXmm3KPF92JqQzdVCFVSZVUJXYK5CG4eGD0Tgo1aAeKCVKBH2kNYM6SKEqdNdSUX9EBj5RpeTned7/DkxqVerGUWF/TW9QYPV1R185qVCCrkY+JNvZ2xRDClZp0V+jXOv6nl1NVvObcAV4doVvk0/4hGN/ideOgtSPtc2QsG2rznYf2FJPOz3P4yFuFtZoLoRVoaH/e0NnE6vsE23Wcw/5Y6rhMfs9ll9xoNqkCkc0wgcatCjnNe8WG7ajHvPvqADfAW1cfiXw1449goQVZMWdXqjWFDa37qXk1tzA4Fcsyfuc5e/6hTRFZ8JcblCTwzDgvgk9iPupEzn73ef+CX49QjBQ0WlJieVfmjia2nXJ3LfbuoW+89FosFb/qTjMJWH5dYyRBrDLSJNptKIQUZD7/C+6Qe5S87GH569fU9RszyQvTCAhkuiSs7RPfDNOiKRbpu8NFF7MFF3Vw0J2Ky+ARKSVqDUFN/WFabe8r9SmgvshXpYtLPXYZOdI5oU2ITSisRINLM=";
 
-            if (context) {
-                if (camera) await camera.switchToDesiredState(Scandit.FrameSourceState.On);
-                barcodeCapture.isEnabled = true;
-                return;
-            }
-
+            log("Scanditの設定(Configure)を開始します...");
             await Scandit.configure({
                 licenseKey: sKey,
                 libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/"
             });
+            log("Configure設定が完了しました。");
 
+            log("コンテキストオブジェクトの作成中...");
             context = await Scandit.DataCaptureContext.forLicenseKey(sKey);
-            const settings = new Scandit.BarcodeCaptureSettings();
             
+            const settings = new Scandit.BarcodeCaptureSettings();
             settings.enableSymbologies([
                 Scandit.Symbology.GS1DataBar,
                 Scandit.Symbology.GS1DataBarLimited,
@@ -329,6 +320,7 @@
                 Scandit.Symbology.EAN13UPCA
             ]);
 
+            log("バーコードキャプチャを初期化中...");
             barcodeCapture = await Scandit.BarcodeCapture.forContext(context, settings);
             
             barcodeCapture.addListener({
@@ -342,20 +334,30 @@
                 }
             });
 
+            log("カメラのデフォルト設定を取得中...");
             camera = Scandit.Camera.default;
             if (camera) {
                 const cameraSettings = Scandit.BarcodeCapture.recommendedCameraSettings;
                 cameraSettings.preferredResolution = Scandit.VideoResolution.FullHD;
                 await camera.applySettings(cameraSettings);
                 await context.setFrameSource(camera);
+                log("カメラ設定の適用が完了。");
+            } else {
+                log("エラー: 使用可能なカメラデバイスが見つかりません。", true);
+                return;
             }
 
+            log("画面（View）をHTML要素に接続しています...");
             view = await Scandit.DataCaptureView.forContext(context);
             view.connectToElement(document.getElementById('previewView'));
             
             await Scandit.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
+            
+            log("カメラをONに切り替えます（ブラウザの許可プロンプトが出るはずです）...");
             await camera.switchToDesiredState(Scandit.FrameSourceState.On);
+            
             barcodeCapture.isEnabled = true;
+            log("🎉 すべてのカメラ初期化プロセスが正常に完了しました！映像が出るか確認してください。");
         }
 
         // --- 3. バーコード検出時の検索・UI反映 ---
@@ -435,7 +437,7 @@
             if (barcodeCapture) barcodeCapture.isEnabled = true;
         });
 
-        // --- 5. リストの描画 ＆ 修正・削除 ---
+        // --- 5. リストの描画 ---
         function updateTable() {
             document.getElementById('tvCount').textContent = `${scannedList.length}件`;
             const container = document.getElementById('tvListView');
@@ -452,7 +454,7 @@
                 div.innerHTML = `[${index + 1}] ----------------------------------<br>` +
                                 `【コード】 ${item.code}<br>` +
                                 `【名称】   ${item.name}<br>` +
-                                `【数量】   ${item.qty} ${item.unit}  (👈 タップで修正/削除)`;
+                                `【数量】   ${item.qty} ${item.unit}`;
                 
                 div.addEventListener('click', () => showEditDialog(index));
                 container.appendChild(div);
@@ -461,12 +463,11 @@
 
         function showEditDialog(index) {
             const item = scannedList[index];
-            const newQty = prompt(`【数量の修正 / 削除】\n薬品: ${item.name}\nコード: ${item.code}\n\n新しい数量を入力してください`, item.qty);
+            const newQty = prompt(`【数量の修正】\n${item.name}\n新しい数量を入力してください`, item.qty);
             if (newQty === null) return;
 
             if (newQty.trim() === "") {
-                const delConf = confirm("この行を削除しますか？");
-                if (delConf) {
+                if (confirm("削除しますか？")) {
                     scannedList.splice(index, 1);
                     updateTable();
                 }
@@ -476,17 +477,11 @@
             }
         }
 
-        // --- 6. 各種アクション (CSV出力・A4印刷・全クリア) ---
+        // --- 6. 各種アクション ---
         document.getElementById('btnExportCSV').addEventListener('click', function() {
-            if (scannedList.length === 0) {
-                alert("データがありません");
-                return;
-            }
+            if (scannedList.length === 0) return;
             let csvContent = "\ufeffコード,薬品名,数量\n";
-            scannedList.forEach(item => {
-                csvContent += `${item.code},${item.name},${item.qty}\n`;
-            });
-
+            scannedList.forEach(item => { csvContent += `${item.code},${item.name},${item.qty}\n`; });
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -497,58 +492,20 @@
         });
 
         document.getElementById('btnPrintAll').addEventListener('click', function() {
-            if (scannedList.length === 0) {
-                alert("印刷するデータがありません");
-                return;
-            }
+            if (scannedList.length === 0) return;
             const sortedList = [...scannedList].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
             let htmlRows = "";
             sortedList.forEach((item, index) => {
-                htmlRows += `<tr>
-                    <td style="text-align: center;">${index + 1}</td>
-                    <td style="text-align: center;">${item.code}</td>
-                    <td>${item.name}</td>
-                    <td style="text-align: right; font-weight: bold; padding-right: 15px;">${item.qty}</td>
-                    <td style="text-align: left;">${item.unit}</td>
-                </tr>`;
+                htmlRows += `<tr><td style="text-align:center;">${index + 1}</td><td style="text-align:center;">${item.code}</td><td>${item.name}</td><td style="text-align:right;">${item.qty}</td><td>${item.unit}</td></tr>`;
             });
-            const nowStr = new Date().toLocaleString('ja-JP');
             const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <style>
-                        body { font-family: sans-serif; color: #333; padding: 10px; }
-                        h2 { text-align: center; color: #00796B; margin-bottom: 20px; font-size: 20px; }
-                        .info-table { width: 100%; margin-bottom: 15px; font-size: 12px; }
-                        .main-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-                        .main-table th, .main-table td { border: 1px solid #666; padding: 7px; overflow: hidden; word-wrap: break-word; }
-                        .main-table th { background-color: #E0F2F1; color: #004D40; }
-                    </style>
-                </head>
-                <body>
-                    <h2>棚卸物品 一括印刷一覧 (50音順)</h2>
-                    <table class="info-table">
-                        <tr><td><strong>出力日時:</strong> ${nowStr}</td><td style="text-align: right;"><strong>総件数:</strong> ${sortedList.length} 件</td></tr>
-                    </table>
-                    <table class="main-table">
-                        <colgroup><col style="width: 7%;"><col style="width: 23%;"><col style="width: 50%;"><col style="width: 12%;"><col style="width: 8%;"></colgroup>
-                        <thead><tr><th>No.</th><th>医薬品コード</th><th>医薬品名</th><th>数量</th><th>単位</th></tr></thead>
-                        <tbody>${htmlRows}</tbody>
-                    </table>
-                </body>
-                </html>
-            `);
+            printWindow.document.write(`<html><head><style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse;} th,td{border:1px solid #666; padding:8px;}</style></head><body><h2>棚卸一覧</h2><table><thead><tr><th>No.</th><th>コード</th><th>薬品名</th><th>数量</th><th>単位</th></tr></thead><tbody>${htmlRows}</tbody></table></body></html>`);
             printWindow.document.close();
-            printWindow.focus();
-            setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+            printWindow.print();
         });
 
         document.getElementById('btnClearAll').addEventListener('click', function() {
-            if (scannedList.length === 0) return;
-            if (confirm("すべてのデータを消去しますか？")) {
+            if (scannedList.length > 0 && confirm("クリアしますか？")) {
                 scannedList.length = 0;
                 updateTable();
             }
