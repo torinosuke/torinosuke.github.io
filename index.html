@@ -103,7 +103,7 @@
     </div>
 </div>
 <!-- ① Scandit SDK の読み込み -->
-<script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.x"></script>
+<script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.x/build/browser/index.js"></script>
 <script>
     let masterData = {}; 
     let scannedList = []; 
@@ -143,7 +143,8 @@
             // SDKの初期化
             await ScanditDataCaptureBarcode.configure({
                 licenseKey: SCANDIT_LICENSE_KEY,
-                libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.x/bundle"
+                // 末尾を /build/browser/bundle に変更
+                libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.x/build/browser/bundle"
             });
 
             context = ScanditDataCaptureBarcode.DataCaptureContext.forLicenseKey(SCANDIT_LICENSE_KEY);
