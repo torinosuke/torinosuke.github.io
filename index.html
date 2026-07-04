@@ -156,6 +156,7 @@
     <!-- ① マスタ読込エリア -->
     <div class="card">
         <div class="title-sm">① 薬品マスタ(CSV)を読み込む</div>
+        <!-- 💡 競合を防ぐため、HTML側のonclick属性を完全に撤廃しました -->
         <input type="file" id="filePicker" accept=".csv" style="display: none;">
         <button type="button" id="btnLoadMaster">📁 CSVファイルを選択</button>
         <div id="tvMasterStatus">❌ マスタ未読込</div>
@@ -199,7 +200,6 @@
         <div id="tvListView">ここに棚卸データが並びます</div>
     </div>
 
-    <!-- 💡 【重要】type="module" を指定し、最新のScandit Web SDKを直接インポートして初期化します -->
     <script type="module">
         import * as Scandit from "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.js";
 
@@ -218,10 +218,24 @@
         let camera = null;
         let view = null;
 
-        // 読み込みボタンの紐付け
-        document.getElementById('btnLoadMaster').addEventListener('click', () => {
-            document.getElementById('filePicker').click();
+        // 💡 【ここを修正】モジュール内で確実にクリック連動が起きるよう最優先で記述します
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('btnLoadMaster');
+            const picker = document.getElementById('filePicker');
+            if(btn && picker) {
+                btn.addEventListener('click', () => {
+                    picker.click();
+                });
+            }
         });
+
+        // 予備の即時バインド処理
+        const loadBtn = document.getElementById('btnLoadMaster');
+        if (loadBtn) {
+            loadBtn.onclick = function() {
+                document.getElementById('filePicker').click();
+            };
+        }
 
         // --- 1. CSVマスタ読み込み・パース処理 ---
         document.getElementById('filePicker').addEventListener('change', function(e) {
