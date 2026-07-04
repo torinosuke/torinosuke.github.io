@@ -193,7 +193,7 @@
             isScannerInitialized = true;
         } catch (error) {
             console.error("Scandit初期化エラー:", error);
-            alert("Scanditの初期化に失敗しました。ライセンスキー等を確認してください。");
+            alert("Scanditの初期化に失敗しました。ライセンスキー等を確認してください。" + error.message);
         }
     }
 
