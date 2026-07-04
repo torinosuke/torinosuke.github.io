@@ -156,12 +156,8 @@
     <!-- ① マスタ読込エリア -->
     <div class="card">
         <div class="title-sm">① 薬品マスタ(CSV)を読み込む</div>
-        <!-- 💡 隠しインプット要素 -->
         <input type="file" id="filePicker" accept=".csv" style="display: none;">
-        
-        <!-- 💡 【確実な修正】JavaScriptのタイミングに依存しないよう、インラインで確実に発火させます -->
         <button type="button" id="btnLoadMaster" onclick="document.getElementById('filePicker').click();">📁 CSVファイルを選択</button>
-        
         <div id="tvMasterStatus">❌ マスタ未読込</div>
     </div>
 
@@ -221,6 +217,9 @@
         let camera = null;
         let view = null;
 
+        // 💡 【超重要】モジュール内で宣言した関数をグローバルに公開し、確実に発火可能にします
+        window.initAndStartScandit = initAndStartScandit;
+
         // --- 1. CSVマスタ読み込み・パース処理 ---
         document.getElementById('filePicker').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -259,9 +258,9 @@
                     statusText.textContent = `✅ 読込完了: ${masterData.size}件`;
                     statusText.style.color = '#388E3C';
 
-                    // スキャンセクションを展開し、Scanditを初期化・起動
+                    // スキャンセクションを展開し、公開した初期化関数を呼び出す
                     document.getElementById('scanSection').style.display = 'block';
-                    initAndStartScandit();
+                    window.initAndStartScandit();
 
                 } catch (err) {
                     alert('マスタの読み込みに失敗しました: ' + err.message);
@@ -429,7 +428,6 @@
             });
         }
 
-        // 修正ダイアログ
         function showEditDialog(index) {
             const item = scannedList[index];
             const newQty = prompt(`【数量の修正 / 削除】\n薬品: ${item.name}\nコード: ${item.code}\n\n新しい数量を入力してください（空欄にして削除を選ぶことも可能です）`, item.qty);
