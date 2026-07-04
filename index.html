@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>💊 簡易棚卸アプリ (Web版)</title>
     <!-- Scandit SDK の読み込み -->
-    <script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.x"></script>
+    <script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.24.1/build/browser/scandit-datacapture-barcode.min.js" defer></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -299,7 +299,7 @@
                 // ライブラリのコアエンジンをライセンスキーを添えて初期化します
                 await Scandit.configure({
                     licenseKey: scanditLicenseKey,
-                    libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.x/build/"
+                    libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.24.1/build/"
                 });
 
                 // コンテキストと設定の生成
