@@ -55,7 +55,7 @@
             margin-top: 6px;
         }
         
-        /* ② 在庫スキャンエリア (ネイティブ同様最初は非表示) */
+        /* ② 在庫スキャンエリア */
         #scanSection {
             display: none;
             margin-bottom: 8px;
@@ -156,9 +156,12 @@
     <!-- ① マスタ読込エリア -->
     <div class="card">
         <div class="title-sm">① 薬品マスタ(CSV)を読み込む</div>
-        <!-- 💡 競合を防ぐため、HTML側のonclick属性を完全に撤廃しました -->
+        <!-- 💡 隠しインプット要素 -->
         <input type="file" id="filePicker" accept=".csv" style="display: none;">
-        <button type="button" id="btnLoadMaster">📁 CSVファイルを選択</button>
+        
+        <!-- 💡 【確実な修正】JavaScriptのタイミングに依存しないよう、インラインで確実に発火させます -->
+        <button type="button" id="btnLoadMaster" onclick="document.getElementById('filePicker').click();">📁 CSVファイルを選択</button>
+        
         <div id="tvMasterStatus">❌ マスタ未読込</div>
     </div>
 
@@ -218,25 +221,6 @@
         let camera = null;
         let view = null;
 
-        // 💡 【ここを修正】モジュール内で確実にクリック連動が起きるよう最優先で記述します
-        document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('btnLoadMaster');
-            const picker = document.getElementById('filePicker');
-            if(btn && picker) {
-                btn.addEventListener('click', () => {
-                    picker.click();
-                });
-            }
-        });
-
-        // 予備の即時バインド処理
-        const loadBtn = document.getElementById('btnLoadMaster');
-        if (loadBtn) {
-            loadBtn.onclick = function() {
-                document.getElementById('filePicker').click();
-            };
-        }
-
         // --- 1. CSVマスタ読み込み・パース処理 ---
         document.getElementById('filePicker').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -294,17 +278,14 @@
             }
 
             try {
-                // 明示的な読み込みエンジンの構成設定
                 await Scandit.configure({
                     licenseKey: scanditLicenseKey,
                     libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/"
                 });
 
-                // コンテキストと設定の生成
                 context = await Scandit.DataCaptureContext.forLicenseKey(scanditLicenseKey);
                 const settings = new Scandit.BarcodeCaptureSettings();
                 
-                // バーコード規格を有効化[cite: 2]
                 settings.enableSymbologies([
                     Scandit.Symbology.GS1DataBar,
                     Scandit.Symbology.GS1DataBarLimited,
@@ -314,36 +295,32 @@
 
                 barcodeCapture = await Scandit.BarcodeCapture.forContext(context, settings);
                 
-                // スキャンイベントリスナー[cite: 2]
                 barcodeCapture.addListener({
                     didScan: async (capture, session) => {
                         const barcodes = session.newlyRecognizedBarcodes;
                         if (barcodes.length > 0) {
                             const rawValue = barcodes[0].data;
-                            barcodeCapture.isEnabled = false; // 一時停止[cite: 2]
+                            barcodeCapture.isEnabled = false;
                             onScanSuccess(rawValue);
                         }
                     }
                 });
 
-                // カメラ設定[cite: 2]
                 camera = Scandit.Camera.default;
                 if (camera) {
                     const cameraSettings = Scandit.BarcodeCapture.recommendedCameraSettings;
-                    cameraSettings.preferredResolution = Scandit.VideoResolution.FullHD; //[cite: 2]
+                    cameraSettings.preferredResolution = Scandit.VideoResolution.FullHD;
                     await camera.applySettings(cameraSettings);
-                    await context.setFrameSource(camera); //[cite: 2]
+                    await context.setFrameSource(camera);
                 }
 
-                // プレビュー表示[cite: 2]
                 view = await Scandit.DataCaptureView.forContext(context);
                 view.connectToElement(document.getElementById('previewView'));
                 
                 await Scandit.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
                 
-                // カメラを有効化[cite: 2]
                 await camera.switchToDesiredState(Scandit.FrameSourceState.On);
-                barcodeCapture.isEnabled = true; //[cite: 2]
+                barcodeCapture.isEnabled = true;
 
             } catch (error) {
                 console.error("Scandit Init Error:", error);
@@ -452,6 +429,7 @@
             });
         }
 
+        // 修正ダイアログ
         function showEditDialog(index) {
             const item = scannedList[index];
             const newQty = prompt(`【数量の修正 / 削除】\n薬品: ${item.name}\nコード: ${item.code}\n\n新しい数量を入力してください（空欄にして削除を選ぶことも可能です）`, item.qty);
