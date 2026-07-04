@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>💊 簡易棚卸アプリ (Web版)</title>
     
-    <!-- 💡 【修正点】公式が提供する、正しいCDNのURLに修正しました -->
-    <script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.min.js"></script>
-    
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -160,7 +157,7 @@
     <div class="card">
         <div class="title-sm">① 薬品マスタ(CSV)を読み込む</div>
         <input type="file" id="filePicker" accept=".csv" style="display: none;">
-        <button type="button" id="btnLoadMaster" onclick="document.getElementById('filePicker').click();">📁 CSVファイルを選択</button>
+        <button type="button" id="btnLoadMaster">📁 CSVファイルを選択</button>
         <div id="tvMasterStatus">❌ マスタ未読込</div>
     </div>
 
@@ -202,8 +199,10 @@
         <div id="tvListView">ここに棚卸データが並びます</div>
     </div>
 
-    <script>
-        // 🌟 【最重要】ここにScanditからコピーしたライセンスキーを貼り付けてください
+    <!-- 💡 【重要】type="module" を指定し、最新のScandit Web SDKを直接インポートして初期化します -->
+    <script type="module">
+        import * as Scandit from "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.js";
+
         const scanditLicenseKey = "AmSXwDnyHhQ/Ip+Pt+WGnXInQkDtGo07phG2O1sQO31eRbEEAWkAXhdg5LBsSFHvcmbPIC16oiXPM3zb+lyqNI9GooXhbNyoung4Yd4eIGq8GrwEJh3m/04BLa4aMUst/lhFdp5bKUG9YIqAxH/PCGBFYFMvL/oGjlCR4BRoHNtSYHhLdVmBRrY9gHdoTVNlkE6I7V9wnRdoBgUp3lE88OYUg42fQ5QJVExaJYx27tLzcoO24keKxGULIZ64TSrI13EUAuxAVlwnIveSl2jXTp9zg1WvN9hulDk0aYpuZ3l3UQ2/Snx3XKxxqMuifNWrymzS1PIXUlwAecXhkiO56el63vbyS4pAVUxXRL5jc2MfZ9HyLGrhxFFc1Ab6fCiDkFl5He591v6cb5nPK1C2/xh5smMeZR1i61peG4lTZou8TVlxTFGdJ+RqgBibfLO8El3WDg4Q6usHQTGTL0DKplA1b+MWXyxVY0vpqJZ6i1S7CYHABGTecet1izfHe9NjIEaD92I4qYGyXJs4QnI3kBhyuxXZGLgasHAy1SxuTENzMYDWAVEnUeBePRrHcZu8ezsmKl0pMMoBZ1gZ8nxypZ1D6Y5ja4rJ307p5ItqRsbPDD102gzRDKE8c0ndVNuQc2SXpWhmZ61DHAGzRGxNPCdlAjbmSP8mz2kX71dMZk3wSGFxCW2nNfkxWFRuaPtImUppu69O1RiSQJD4xFNBFxps4J/jRiqa6XIMStl+SJnKfZhxGnSwnq1+nLUddq5ZymwQLSBnISIhRv863SjutWlD0/l5NXpEoV5PB1hZO3WuV0aNBXgp63l+cviwZxO+On3FJ11Zoim3Q5cQq2wHMghBmOlXelK1NQXlR99mIz0vWWhvImIObhwt9q+pXRLx8W29oSd9X+/FJO+0oEilDI1fH3smGfMBglHyQS5B08aTVhzQEUgPme1YhXA+V74ZhT0dpkEgrlBuCiNShGW5lXB9SWZsQjwvmN/DWQd6quyXjMjBGynoeoV7Ziq5ulEuL1giwmD1v+WHy3EqMiJJJ4x2Q5wHRgzp6rvNAt66VvEq7tJFPQbZzcNrrARzZfvudNw2C5Ks6qr2iwY5QOITTF3zlxFPDSE73frOYymmM23I0toSZiuISSqvCxYlfw5bVXzPXmm3KPF92JqQzdVCFVSZVUJXYK5CG4eGD0Tgo1aAeKCVKBH2kNYM6SKEqdNdSUX9EBj5RpeTned7/DkxqVerGUWF/TW9QYPV1R185qVCCrkY+JNvZ2xRDClZp0V+jXOv6nl1NNvObcAV4doVvk0/4hGN/ideOgtSPtc2QsG2rznYf2FJPOz3P4yFuFtZoLoRVoaH/e0NnE6vsE23Wcw/5Y6rhMfs9ll9xoNqkCkc0wgcatCjnNe8WG7ajHvPvqADfAW1cfiXw1449goQVZMWdXqjWFDa37qXk1tzA4Fcsyfuc5e/6hTRFZ8JcblCTwzDgvgk9iPupEzn73ef+CX49QjBQ0WlJieVfmjia2nXJ3LfbuoW+89FosFb/qTjMJWH5dYyRBrDLSJNptKIQUZD7/C+6Qe5S87GH569fU9RszyQvTCAhkuiSs7RPfDNOiKRbpu8NFF7MFF3Vw0J2Ky+ARKSVqDUFN/WFabe8r9SmgvshXpYtLPXYZOdI5oU2ITSisRINLM=";
 
         // データ保持用変数
@@ -218,6 +217,11 @@
         let barcodeCapture = null;
         let camera = null;
         let view = null;
+
+        // 読み込みボタンの紐付け
+        document.getElementById('btnLoadMaster').addEventListener('click', () => {
+            document.getElementById('filePicker').click();
+        });
 
         // --- 1. CSVマスタ読み込み・パース処理 ---
         document.getElementById('filePicker').addEventListener('change', function(e) {
@@ -269,44 +273,32 @@
 
         // --- 2. Scandit Web SDK 初期化 & 起動 ---
         async function initAndStartScandit() {
-            // すでに初期化済みの場合はカメラをONにして再開
             if (context) {
-                if (camera) await camera.switchToDesiredState(context.frameSource.desiredState.On);
+                if (camera) await camera.switchToDesiredState(Scandit.FrameSourceState.On);
                 barcodeCapture.isEnabled = true;
                 return;
             }
 
-            let SDK;
             try {
-                // 💡 【根本解決】ブラウザの機能で、CDNから直接モジュールとして強制ロードします
-                // これにより、window.Scandit があるかないかの判定ストレスから完全に解放されます
-                SDK = await import("https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.min.js");
-            } catch (importError) {
-                console.error("SDK import error:", importError);
-                alert("Scanditライブラリの通信・読み込みに失敗しました。ネットワーク環境や、ローカルファイル（file:///）で開いていないかを確認してください。");
-                return;
-            }
-
-            try {
-                // 💡 読み込んだモジュールを使用して初期化を実行
-                await SDK.configure({
+                // 明示的な読み込みエンジンの構成設定
+                await Scandit.configure({
                     licenseKey: scanditLicenseKey,
                     libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/"
                 });
 
                 // コンテキストと設定の生成
-                context = await SDK.DataCaptureContext.forLicenseKey(scanditLicenseKey);
-                const settings = new SDK.BarcodeCaptureSettings();
+                context = await Scandit.DataCaptureContext.forLicenseKey(scanditLicenseKey);
+                const settings = new Scandit.BarcodeCaptureSettings();
                 
                 // バーコード規格を有効化[cite: 2]
                 settings.enableSymbologies([
-                    SDK.Symbology.GS1DataBar,
-                    SDK.Symbology.GS1DataBarLimited,
-                    SDK.Symbology.GS1DataBarExpanded,
-                    SDK.Symbology.EAN13UPCA
+                    Scandit.Symbology.GS1DataBar,
+                    Scandit.Symbology.GS1DataBarLimited,
+                    Scandit.Symbology.GS1DataBarExpanded,
+                    Scandit.Symbology.EAN13UPCA
                 ]);
 
-                barcodeCapture = await SDK.BarcodeCapture.forContext(context, settings);
+                barcodeCapture = await Scandit.BarcodeCapture.forContext(context, settings);
                 
                 // スキャンイベントリスナー[cite: 2]
                 barcodeCapture.addListener({
@@ -314,29 +306,29 @@
                         const barcodes = session.newlyRecognizedBarcodes;
                         if (barcodes.length > 0) {
                             const rawValue = barcodes[0].data;
-                            barcodeCapture.isEnabled = false; // 連続スキャン防止[cite: 2]
+                            barcodeCapture.isEnabled = false; // 一時停止[cite: 2]
                             onScanSuccess(rawValue);
                         }
                     }
                 });
 
                 // カメラ設定[cite: 2]
-                camera = SDK.Camera.default;
+                camera = Scandit.Camera.default;
                 if (camera) {
-                    const cameraSettings = SDK.BarcodeCapture.recommendedCameraSettings;
-                    cameraSettings.preferredResolution = SDK.VideoResolution.FullHD; //[cite: 2]
+                    const cameraSettings = Scandit.BarcodeCapture.recommendedCameraSettings;
+                    cameraSettings.preferredResolution = Scandit.VideoResolution.FullHD; //[cite: 2]
                     await camera.applySettings(cameraSettings);
                     await context.setFrameSource(camera); //[cite: 2]
                 }
 
                 // プレビュー表示[cite: 2]
-                view = await SDK.DataCaptureView.forContext(context);
+                view = await Scandit.DataCaptureView.forContext(context);
                 view.connectToElement(document.getElementById('previewView'));
                 
-                const overlay = await SDK.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
+                await Scandit.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
                 
-                // カメラをONに[cite: 2]
-                await camera.switchToDesiredState(SDK.FrameSourceState.On);
+                // カメラを有効化[cite: 2]
+                await camera.switchToDesiredState(Scandit.FrameSourceState.On);
                 barcodeCapture.isEnabled = true; //[cite: 2]
 
             } catch (error) {
@@ -344,7 +336,7 @@
                 alert("Scanditの初期化中にエラーが発生しました: " + error);
             }
         }
-        
+
         // --- 3. バーコード検出時の検索・UI反映 ---
         function onScanSuccess(decodedText) {
             let code = decodedText.trim();
