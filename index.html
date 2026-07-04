@@ -3,8 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>💊 簡易棚卸アプリ (修正版)</title>
+    <title>💊 簡易棚卸アプリ (ImportMap修正版)</title>
     
+    <!-- 📦 ブラウザにモジュールの正確な居場所を教えるマップを追加 -->
+    <script type="importmap">
+    {
+      "imports": {
+        "scandit-web-datacapture-core": "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-core@6.26.0/build/js/index.js",
+        "scandit-web-datacapture-barcode": "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.js"
+      }
+    }
+    </script>
+
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -152,7 +162,7 @@
 </head>
 <body>
 
-    <h3>💊 簡易棚卸アプリ (修正版)</h3>
+    <h3>💊 簡易棚卸アプリ (ImportMap修正版)</h3>
 
     <!-- ① マスタ読込エリア -->
     <div class="card">
@@ -205,6 +215,10 @@
     </div>
 
     <script type="module">
+        // Import Mapにより、名前だけで正しく読み込めるようになります
+        import * as ScanditCore from "scandit-web-datacapture-core";
+        import * as ScanditBarcode from "scandit-web-datacapture-barcode";
+
         const masterData = new Map();
         const scannedList = [];
         
@@ -284,7 +298,7 @@
 
         async function startCameraProcess() {
             try {
-                log("Scanditライブラリのロードを試みています...");
+                log("Scanditライブラリの初期設定を開始します...");
                 await initAndStartScandit();
             } catch (scanditErr) {
                 log(`カメラ起動プロセス全体で致命的なエラー: ${scanditErr.name} - ${scanditErr.message}`, true);
@@ -294,16 +308,9 @@
 
         // --- 2. Scandit Web SDK 初期化 & 起動 ---
         async function initAndStartScandit() {
-            log("Scandit Coreモジュールを読み込んでいます...");
-            const ScanditCore = await import("https://cdn.jsdelivr.net/npm/scandit-web-datacapture-core@6.26.0/build/js/index.js");
-            
-            log("Scandit Barcodeモジュールを読み込んでいます...");
-            const ScanditBarcode = await import("https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.js");
-            
+            // モジュールを1つのオブジェクトに統合
             const Scandit = { ...ScanditCore, ...ScanditBarcode };
-            log("Scanditモジュールのインポートに成功しました。");
-
-            // ライセンスキー末尾の「乎」を除去しました
+            
             const sKey = "AmSXwDnyHhQ/Ip+Pt+WGnXInQkDtGo07phG2O1sQO31eRbEEAWkAXhdg5LBsSFHvcmbPIC16oiXPM3zb+lyqNI9GooXhbNyoung4Yd4eIGq8GrwEJh3m/04BLa4aMUst/lhFdp5bKUG9YIqAxH/PCGBFYFMvL/oGjlCR4BRoHNtSYHhLdVmBRrY9gHdoTVNlkE6I7V9wnRdoBgUp3lE88OYUg42fQ5QJVExaJYx27tLzcoO24keKxGULIZ64TSrI13EUAuxAVlwnIveSl2jXTp9zg1WvN9hulDk0aYpuZ3l3UQ2/Snx3XKxxqMuifNWrymzS1PIXUlwAecXhkiO56el63vbyS4pAVUxXRL5jc2MfZ9HyLGrhxFFc1Ab6fCiDkFl5He591v6cb5nPK1C2/xh5smMeZR1i61peG4lTZou8TVlxTFGdJ+RqgBibfLO8El3WDg4Q6usHQTGTL0DKplA1b+MWXyxVY0vpqJZ6i1S7CYHABGTecet1izfHe9NjIEaD92I4qYGyXJs4QnI3kBhyuxXZGLgasHAy1SxuTENzMYDWAVEnUeBePRrHcZu8ezsmKl0pMMoBZ1gZ8nxypZ1D6Y5ja4rJ307p5ItqRsbPDD102gzRDKE8c0ndVNuQc2SXpWhmZ61DHAGzRGxNPCdlAjbmSP8mz2kX71dMZk3wSGFxCW2nNfkxWFRuaPtImUppu69O1RiSQJD4xFNBFxps4J/jRiqa6XIMStl+SJnKfZhxGnSwnq1+nLUddq5ZymwQLSBnISIhRv863SjutWlD0/l5NXpEoV5PB1hZO3WuV0aNBXgp63l+cviwZxO+On3FJ11Zoim3Q5cQq2wHMghBmOlXelK1NQXlR99mIz0vWWhvImIObhwt9q+pXRLx8W29oSd9X+/FJO+0oEilDI1fH3smGfMBglHyQS5B08aTVhzQEUgPme1YhXA+V74ZhT0dpkEgrlBuCiNShGW5lXB9SWZsQjwvmN/DWQd6quyXjMjBGynoeoV7Ziq5ulEuL1giwmD1v+WHy3EqMiJJJ4x2Q5wHRgzp6rvNAt66VvEq7tJFPQbZzcNrrARzZfvudNw2C5Ks6qr2iwY5QOITTF3zlxFPDSE73frOYymmM23I0toSZiuISSqvCxYlfw5bVXzPXmm3KPF92JqQzdVCFVSZVUJXYK5CG4eGD0Tgo1aAeKCVKBH2kNYM6SKEqdNdSUX9EBj5RpeTned7/DkxqVerGUWF/TW9QYPV1R185qVCCrkY+JNvZ2xRDClZp0V+jXOv6nl1NVvObcAV4doVvk0/4hGN/ideOgtSPtc2QsG2rznYf2FJPOz3P4yFuFtZoLoRVoaH/e0NnE6vsE23Wcw/5Y6rhMfs9ll9xoNqkCkc0wgcatCjnNe8WG7ajHvPvqADfAW1cfiXw1449goQVZMWdXqjWFDa37qXk1tzA4Fcsyfuc5e/6hTRFZ8JcblCTwzDgvgk9iPupEzn73ef+CX49QjBQ0WlJieVfmjia2nXJ3LfbuoW+89FosFb/qTjMJWH5dYyRBrDLSJNptKIQUZD7/C+6Qe5S87GH569fU9RszyQvTCAhkuiSs7RPfDNOiKRbpu8NFF7MFF3Vw0J2Ky+ARKSVqDUFN/WFabe8r9SmtLVXYZOdI5oU2ITSisRINLM=";
 
             log("Scanditの設定(Configure)を開始します...");
