@@ -269,23 +269,26 @@
 
         // --- 2. Scandit Web SDK 初期化 & 起動 ---
         async function initAndStartScandit() {
-            // 💡 読み込まれたScanditのオブジェクト名を自動で判別して統合します
-            const SDK = window.Scandit || window.ScanditBarcodeCapture || window.ScanditDatacaptureBarcode;
-
-            if (!SDK) {
-                alert("Scandit SDKの読み込みに失敗しました。ネット接続やURLを確認してください。");
-                return;
-            }
-
             // すでに初期化済みの場合はカメラをONにして再開
             if (context) {
-                if (camera) await camera.switchToDesiredState(SDK.FrameSourceState.On);
+                if (camera) await camera.switchToDesiredState(context.frameSource.desiredState.On);
                 barcodeCapture.isEnabled = true;
                 return;
             }
 
+            let SDK;
             try {
-                // 💡 判別したSDKオブジェクトを使って初期化を実行します
+                // 💡 【根本解決】ブラウザの機能で、CDNから直接モジュールとして強制ロードします
+                // これにより、window.Scandit があるかないかの判定ストレスから完全に解放されます
+                SDK = await import("https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.min.js");
+            } catch (importError) {
+                console.error("SDK import error:", importError);
+                alert("Scanditライブラリの通信・読み込みに失敗しました。ネットワーク環境や、ローカルファイル（file:///）で開いていないかを確認してください。");
+                return;
+            }
+
+            try {
+                // 💡 読み込んだモジュールを使用して初期化を実行
                 await SDK.configure({
                     licenseKey: scanditLicenseKey,
                     libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/"
@@ -295,7 +298,7 @@
                 context = await SDK.DataCaptureContext.forLicenseKey(scanditLicenseKey);
                 const settings = new SDK.BarcodeCaptureSettings();
                 
-                // ネイティブアプリと同様のバーコード規格を有効化[cite: 2]
+                // バーコード規格を有効化[cite: 2]
                 settings.enableSymbologies([
                     SDK.Symbology.GS1DataBar,
                     SDK.Symbology.GS1DataBarLimited,
@@ -337,6 +340,7 @@
                 barcodeCapture.isEnabled = true; //[cite: 2]
 
             } catch (error) {
+                console.error("Scandit Init Error:", error);
                 alert("Scanditの初期化中にエラーが発生しました: " + error);
             }
         }
