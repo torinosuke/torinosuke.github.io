@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>💊 簡易棚卸アプリ (Web版)</title>
     <!-- Scandit SDK の読み込み -->
-    <script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.24.1/build/browser/scandit-datacapture-barcode.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.28.1/build/browser/scandit-datacapture-barcode.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -276,45 +276,48 @@
 
         // --- 2. Scandit Web SDK 初期化 & 起動 ---
         async function initAndStartScandit() {
-            // すでに初期化済みの場合はカメラをONにして再開
+            // 💡 グローバルオブジェクトの揺らぎを吸収 (Scandit または ScanditDatacaptureBarcode)
+            const sd = window.Scandit || window.ScanditDatacaptureBarcode;
+
             if (context) {
-                if (camera) await camera.switchToDesiredState(Scandit.FrameSourceState.On);
+                if (camera) await camera.switchToDesiredState(sd.FrameSourceState.On);
                 barcodeCapture.isEnabled = true;
                 return;
             }
 
-            // 💡 読込遅延対策: Scanditオブジェクトがブラウザに認識されるまで最大5秒待つ安全策
+            // 読込遅延対策
+            let targetSDK = sd;
             for (let i = 0; i < 50; i++) {
-                if (window.Scandit) break;
+                targetSDK = window.Scandit || window.ScanditDatacaptureBarcode;
+                if (targetSDK) break;
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
 
-            if (!window.Scandit) {
-                alert("Scandit SDKの読み込みに時間がかかっているか、失敗しました。ページを再読み込みしてください。");
+            if (!targetSDK) {
+                alert("Scandit SDKの読み込みに失敗しました。ネット接続やURLを確認してください。");
                 return;
             }
 
             try {
-                // 💡 Web版SDKに必要な初期配置・読み込みの明示的実行
-                // ライブラリのコアエンジンをライセンスキーを添えて初期化します
-                await Scandit.configure({
+                // 💡 正しいバージョン（6.28.1）の配信ディレクトリを明示
+                await targetSDK.configure({
                     licenseKey: scanditLicenseKey,
-                    libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.24.1/build/"
+                    libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.28.1/build/"
                 });
 
                 // コンテキストと設定の生成
-                context = await Scandit.DataCaptureContext.forLicenseKey(scanditLicenseKey);
-                const settings = new Scandit.BarcodeCaptureSettings();
+                context = await targetSDK.DataCaptureContext.forLicenseKey(scanditLicenseKey);
+                const settings = new targetSDK.BarcodeCaptureSettings();
                 
                 // ネイティブアプリと同様のバーコード規格を有効化[cite: 2]
                 settings.enableSymbologies([
-                    Scandit.Symbology.GS1DataBar,
-                    Scandit.Symbology.GS1DataBarLimited,
-                    Scandit.Symbology.GS1DataBarExpanded,
-                    Scandit.Symbology.EAN13UPCA
+                    targetSDK.Symbology.GS1DataBar,
+                    targetSDK.Symbology.GS1DataBarLimited,
+                    targetSDK.Symbology.GS1DataBarExpanded,
+                    targetSDK.Symbology.EAN13UPCA
                 ]);
 
-                barcodeCapture = await Scandit.BarcodeCapture.forContext(context, settings);
+                barcodeCapture = await targetSDK.BarcodeCapture.forContext(context, settings);
                 
                 // スキャンイベントリスナー[cite: 2]
                 barcodeCapture.addListener({
@@ -322,34 +325,33 @@
                         const barcodes = session.newlyRecognizedBarcodes;
                         if (barcodes.length > 0) {
                             const rawValue = barcodes[0].data;
-                            // 連続スキャン防止のため一時停止[cite: 2]
-                            barcodeCapture.isEnabled = false;
+                            barcodeCapture.isEnabled = false; // 連続スキャン防止[cite: 2]
                             onScanSuccess(rawValue);
                         }
                     }
                 });
 
                 // カメラ設定[cite: 2]
-                camera = Scandit.Camera.default;
+                camera = targetSDK.Camera.default;
                 if (camera) {
-                    const cameraSettings = Scandit.BarcodeCapture.recommendedCameraSettings;
-                    cameraSettings.preferredResolution = Scandit.VideoResolution.FullHD; //[cite: 2]
+                    const cameraSettings = targetSDK.BarcodeCapture.recommendedCameraSettings;
+                    cameraSettings.preferredResolution = targetSDK.VideoResolution.FullHD; //[cite: 2]
                     await camera.applySettings(cameraSettings);
                     await context.setFrameSource(camera); //[cite: 2]
                 }
 
                 // プレビュー表示[cite: 2]
-                view = await Scandit.DataCaptureView.forContext(context);
+                view = await targetSDK.DataCaptureView.forContext(context);
                 view.connectToElement(document.getElementById('previewView'));
                 
-                const overlay = await Scandit.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
+                const overlay = await targetSDK.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
                 
                 // カメラをONに[cite: 2]
-                await camera.switchToDesiredState(Scandit.FrameSourceState.On);
+                await camera.switchToDesiredState(targetSDK.FrameSourceState.On);
                 barcodeCapture.isEnabled = true; //[cite: 2]
 
             } catch (error) {
-                alert("Scanditの起動に失敗しました: " + error);
+                alert("Scanditの初期化中にエラーが発生しました: " + error);
             }
         }
         
