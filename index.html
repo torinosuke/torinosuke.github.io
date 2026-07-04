@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>💊 簡易棚卸アプリ (Web版)</title>
     
-    <!-- 💡 【確実な修正】モジュール構文を回避するため、グローバルで読み込める統合版SDKスクリプトに変更 -->
-    <script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.js"></script>
-
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -159,8 +156,9 @@
     <!-- ① マスタ読込エリア -->
     <div class="card">
         <div class="title-sm">① 薬品マスタ(CSV)を読み込む</div>
+        <!-- ボタンクリックで直接filePickerを叩くためonclickを調整 -->
         <input type="file" id="filePicker" accept=".csv" style="display: none;">
-        <button type="button" id="btnLoadMaster" onclick="document.getElementById('filePicker').click();">📁 CSVファイルを選択</button>
+        <button type="button" id="btnLoadMaster">📁 CSVファイルを選択</button>
         <div id="tvMasterStatus">❌ マスタ未読込</div>
     </div>
 
@@ -202,13 +200,13 @@
         <div id="tvListView">ここに棚卸データが並びます</div>
     </div>
 
-    <script>
-        // 💡 【超重要】CDNの直接読込に伴い、Scanditオブジェクトの参照方法をグローバル(window直下)に変更
-        const ScanditObj = window.Scandit || {};
+    <!-- 💡 すべてのロジックを統合した確実なESモジュールブロック -->
+    <script type="module">
+        import * as Scandit from "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.js";
 
-        const scanditLicenseKey = "AmSXwDnyHhQ/Ip+Pt+WGnXInQkDtGo07phG2O1sQO31eRbEEAWkAXhdg5LBsSFHvcmbPIC16oiXPM3zb+lyqNI9GooXhbNyoung4Yd4eIGq8GrwEJh3m/04BLa4aMUst/lhFdp5bKUG9YIqAxH/PCGBFYFMvL/oGjlCR4BRoHNtSYHhLdVmBRrY9gHdoTVNlkE6I7V9wnRdoBgUp3lE88OYUg42fQ5QJVExaJYx27tLzcoO24keKxGULIZ64TSrI13EUAuxAVlwnIveSl2jXTp9zg1WvN9hulDk0aYpuZ3l3UQ2/Snx3XKxxqMuifNWrymzS1PIXUlwAecXhkiO56el63vbyS4pAVUxXRL5jc2MfZ9HyLGrhxFFc1Ab6fCiDkFl5He591v6cb5nPK1C2/xh5smMeZR1i61peG4lTZou8TVlxTFGdJ+RqgBibfLO8El3WDg4Q6usHQTGTL0DKplA1b+MWXyxVY0vpqJZ6i1S7CYHABGTecet1izfHe9NjIEaD92I4qYGyXJs4QnI3kBhyuxXZGLgasHAy1SxuTENzMYDWAVEnUeBePRrHcZu8ezsmKl0pMMoBZ1gZ8nxypZ1D6Y5ja4rJ307p5ItqRsbPDD102gzRDKE8c0ndVNuQc2SXpWhmZ61DHAGzRGxNPCdlAjbmSP8mz2kX71dMZk3wSGFxCW2nNfkxWFRuaPtImUppu69O1RiSQJD4xFNBFxps4J/jRiqa6XIMStl+SJnKfZhxGnSwnq1+nLUddq5ZymwQLSBnISIhRv863SjutWlD0/l5NXpEoV5PB1hZO3WuV0aNBXgp63l+cviwZxO+On3FJ11Zoim3Q5cQq2wHMghBmOlXelK1NQXlR99mIz0vWWhvImIObhwt9q+pXRLx8W29oSd9X+/FJO+0oEilDI1fH3smGfMBglHyQS5B08aTVhzQEUgPme1YhXA+V74ZhT0dpkEgrlBuCiNShGW5lXB9SWZsQjwvmN/DWQd6quyXjMjBGynoeoV7Ziq5ulEuL1giwmD1v+WHy3EqMiJJJ4x2Q5wHRgzp6rvNAt66VvEq7tJFPQbZzcNrrARzZfvudNw2C5Ks6qr2iwY5QOITTF3zlxFPDSE73frOYymmM23I0toSZiuISSqvCxYlfw5bVXzPXmm3KPF92JqQzdVCFVSZVUJXYK5CG4eGD0Tgo1aAeKCVKBH2kNYM6SKEqdNdSUX9EBj5RpeTned7/DkxqVerGUWF/TW9QYPV1R185qVCCrkY+JNvZ2xRDClZp0V+jXOv6nl1NNvObcAV4doVvk0/4hGN/ideOgtSPtc2QsG2rznYf2FJPOz3P4yFuFtZoLoRVoaH/e0NnE6vsE23Wcw/5Y6rhMfs9ll9xoNqkCkc0wgcatCjnNe8WG7ajHvPvqADfAW1cfiXw1449goQVZMWdXqjWFDa37qXk1tzA4Fcsyfuc5e/6hTRFZ8JcblCTwzDgvgk9iPupEzn73ef+CX49QjBQ0WlJieVfmjia2nXJ3LfbuoW+89FosFb/qTjMJWH5dYyRBrDLSJNptKIQUZD7/C+6Qe5S87GH569fU9RszyQvTCAhkuiSs7RPfDNOiKRbpu8NFF7MFF3Vw0J2Ky+ARKSVqDUFN/WFabe8r9SmgvshXpYtLPXYZOdI5oU2ITSisRINLM=";
+        const scanditLicenseKey = "AmSXwDnyHhQ/Ip+Pt+WGnXInQkDtGo07phG2O1sQO31eRbEEAWkAXhdg5LBsSFHvcmbPIC16oiXPM3zb+lyqNI9GooXhbNyoung4Yd4eIGq8GrwEJh3m/04BLa4aMUst/lhFdp5bKUG9YIqAxH/PCGBFYFMvL/oGjlCR4BRoHNtSYHhLdVmBRrY9gHdoTVNlkE6I7V9wnRdoBgUp3lE88OYUg42fQ5QJVExaJYx27tLzcoO24keKxGULIZ64TSrI13EUAuxAVlwnIveSl2jXTp9zg1WvN9hulDk0aYpuZ3l3UQ2/Snx3XKxxqMuifNWrymzS1PIXUlwAecXhkiO56el63vbyS4pAVUxXRL5jc2MfZ9HyLGrhxFFc1Ab6fCiDkFl5He591v6cb5nPK1C2/xh5smMeZR1i61peG4lTZou8TVlxTFGdJ+RqgBibfLO8El3WDg4Q6usHQTGTL0DKplA1b+MWXyxVY0vpqJZ6i1S7CYHABGTecet1izfHe9NjIEaD92I4qYGyXJs4QnI3kBhyuxXZGLgasHAy1SxuTENzMYDWAVEnUeBePRrHcZu8ezsmKl0pMMoBZ1gZ8nxypZ1D6Y5ja4rJ307p5ItqRsbPDD102gzRDKE8c0ndVNuQc2SXpWhmZ61DHAGzRGxNPCdlAjbmSP8mz2kX71dMZk3wSGFxCW2nNfkxWFRuaPtImUppu69O1RiSQJD4xFNBFxps4J/jRiqa6XIMStl+SJnKfZhxGnSwnq1+nLUddq5ZymwQLSBnISIhRv863SjutWlD0/l5NXpEoV5PB1hZO3WuV0aNBXgp63l+cviwZxO+On3FJ11Zoim3Q5cQq2wHMghBmOlXelK1NQXlR99mIz0vWWhvImIObhwt9q+pXRLx8W29oSd9X+/FJO+0oEilDI1fH3smGfMBglHyQS5B08aTVhzQEUgPme1YhXA+V74ZhT0dpkEgrlBuCiNShGW5lXB9SWZsQjwvmN/DWQd6quyXjMjBGynoeoV7Ziq5ulEuL1giwmD1v+WHy3EqMiJJJ4x2Q5wHRgzp6rvNAt66VvEq7tJFPQbZzcNrrARzZfvudNw2C5Ks6qr2iwY5QOITTF3zlxFPDSE73frOYymmM23I0toSZiuISSqvCxYlfw5bVXzPXmm3KPF92JqQzdVCFVSZVUJXYK5CG4eGD0Tgo1aAeKCVKBH2kNYM6SKEqdNdSUX9EBj5RpeTned7/DkxqVerGUWF/TW9QYPV1R185qVCCrkY+JNvZ2xRDClZp0V+jXOv6nl1院内システム等の状況に合わせて適宜調整を行ってください。NVvObcAV4doVvk0/4hGN/ideOgtSPtc2QsG2rznYf2FJPOz3P4yFuFtZoLoRVoaH/e0NnE6vsE23Wcw/5Y6rhMfs9ll9xoNqkCkc0wgcatCjnNe8WG7ajHvPvqADfAW1cfiXw1449goQVZMWdXqjWFDa37qXk1tzA4Fcsyfuc5e/6hTRFZ8JcblCTwzDgvgk9iPupEzn73ef+CX49QjBQ0WlJieVfmjia2nXJ3LfbuoW+89FosFb/qTjMJWH5dYyRBrDLSJNptKIQUZD7/C+6Qe5S87GH569fU9RszyQvTCAhkuiSs7RPfDNOiKRbpu8NFF7MFF3Vw0J2Ky+ARKSVqDUFN/WFabe8r9SmgvshXpYtLPXYZOdI5oU2ITSisRINLM=";
 
-        // データ保持用変数
+        // データ管理用
         const masterData = new Map();
         const scannedList = [];
         
@@ -220,6 +218,11 @@
         let barcodeCapture = null;
         let camera = null;
         let view = null;
+
+        // HTML側のイベントリスナーもモジュール内部から安全に紐付けます
+        document.getElementById('btnLoadMaster').addEventListener('click', () => {
+            document.getElementById('filePicker').click();
+        });
 
         // --- 1. CSVマスタ読み込み・パース処理 ---
         document.getElementById('filePicker').addEventListener('change', function(e) {
@@ -259,7 +262,7 @@
                     statusText.textContent = `✅ 読込完了: ${masterData.size}件`;
                     statusText.style.color = '#388E3C';
 
-                    // スキャンセクションを展開し、即時初期化をキック
+                    // スキャンセクション表示 & Scandit起動
                     document.getElementById('scanSection').style.display = 'block';
                     initAndStartScandit();
 
@@ -272,29 +275,29 @@
         // --- 2. Scandit Web SDK 初期化 & 起動 ---
         async function initAndStartScandit() {
             if (context) {
-                if (camera) await camera.switchToDesiredState(ScanditObj.FrameSourceState.On);
+                if (camera) await camera.switchToDesiredState(Scandit.FrameSourceState.On);
                 barcodeCapture.isEnabled = true;
                 return;
             }
 
             try {
-                // 💡 通常のScript読み込みにあわせてメソッド群を安全に呼び出す形式に変更
-                await ScanditObj.configure({
+                // 正しくインポートされた「Scandit」オブジェクトから設定を呼び出し
+                await Scandit.configure({
                     licenseKey: scanditLicenseKey,
                     libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/"
                 });
 
-                context = await ScanditObj.DataCaptureContext.forLicenseKey(scanditLicenseKey);
-                const settings = new ScanditObj.BarcodeCaptureSettings();
+                context = await Scandit.DataCaptureContext.forLicenseKey(scanditLicenseKey);
+                const settings = new Scandit.BarcodeCaptureSettings();
                 
                 settings.enableSymbologies([
-                    ScanditObj.Symbology.GS1DataBar,
-                    ScanditObj.Symbology.GS1DataBarLimited,
-                    ScanditObj.Symbology.GS1DataBarExpanded,
-                    ScanditObj.Symbology.EAN13UPCA
+                    Scandit.Symbology.GS1DataBar,
+                    Scandit.Symbology.GS1DataBarLimited,
+                    Scandit.Symbology.GS1DataBarExpanded,
+                    Scandit.Symbology.EAN13UPCA
                 ]);
 
-                barcodeCapture = await ScanditObj.BarcodeCapture.forContext(context, settings);
+                barcodeCapture = await Scandit.BarcodeCapture.forContext(context, settings);
                 
                 barcodeCapture.addListener({
                     didScan: async (capture, session) => {
@@ -307,20 +310,20 @@
                     }
                 });
 
-                camera = ScanditObj.Camera.default;
+                camera = Scandit.Camera.default;
                 if (camera) {
-                    const cameraSettings = ScanditObj.BarcodeCapture.recommendedCameraSettings;
-                    cameraSettings.preferredResolution = ScanditObj.VideoResolution.FullHD;
+                    const cameraSettings = Scandit.BarcodeCapture.recommendedCameraSettings;
+                    cameraSettings.preferredResolution = Scandit.VideoResolution.FullHD;
                     await camera.applySettings(cameraSettings);
                     await context.setFrameSource(camera);
                 }
 
-                view = await ScanditObj.DataCaptureView.forContext(context);
+                view = await Scandit.DataCaptureView.forContext(context);
                 view.connectToElement(document.getElementById('previewView'));
                 
-                await ScanditObj.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
+                await Scandit.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
                 
-                await camera.switchToDesiredState(ScanditObj.FrameSourceState.On);
+                await camera.switchToDesiredState(Scandit.FrameSourceState.On);
                 barcodeCapture.isEnabled = true;
 
             } catch (error) {
@@ -508,8 +511,8 @@
                     <h2>棚卸物品 一括印刷一覧 (50音順)</h2>
                     <table class="info-table">
                         <tr>
-                            <td><strong>出力日時:</strong> \${nowStr}</td>
-                            <td style="text-align: right;"><strong>総件数:</strong> \${sortedList.length} 件</td>
+                            <td><strong>出力日時:</strong> ${nowStr}</td>
+                            <td style="text-align: right;"><strong>総件数:</strong> ${sortedList.length} 件</td>
                         </tr>
                     </table>
                     <table class="main-table">
@@ -530,7 +533,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            \${htmlRows}
+                            ${htmlRows}
                         </tbody>
                     </table>
                 </body>
@@ -549,7 +552,7 @@
                 alert("クリアするデータがありません");
                 return;
             }
-            const conf = confirm(`データの全削除\n\n現在リストに登録されている、すべての棚卸データ（\${scannedList.length}件）を完全に消去します。よろしいですか？`);
+            const conf = confirm(`データの全削除\n\n現在リストに登録されている、すべての棚卸データ（${scannedList.length}件）を完全に消去します。よろしいですか？`);
             if (conf) {
                 scannedList.length = 0;
                 updateTable();
