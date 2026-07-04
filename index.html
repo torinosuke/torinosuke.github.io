@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>💊 簡易棚卸アプリ (Web版)</title>
-    <!-- Scandit SDK の読み込み -->
-    <script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.28.1/build/browser/scandit-datacapture-barcode.min.js"></script>
+    
+    <!-- 💡 【修正点】公式が提供する、正しいCDNのURLに修正しました -->
+    <script src="https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/js/index.min.js"></script>
+    
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -35,7 +37,6 @@
             font-weight: bold;
             margin-bottom: 6px;
         }
-        /* ボタン基本 */
         button {
             width: 100%;
             padding: 10px;
@@ -59,7 +60,7 @@
         
         /* ② 在庫スキャンエリア (ネイティブ同様最初は非表示) */
         #scanSection {
-            display: none; /* マスタ読込完了で block に変更 */
+            display: none;
             margin-bottom: 8px;
         }
         #previewView {
@@ -119,7 +120,6 @@
         }
         #tvCount { color: #00796B; }
         
-        /* 下部3分割ボタン */
         .action-grid {
             display: flex;
             gap: 4px;
@@ -159,7 +159,6 @@
     <!-- ① マスタ読込エリア -->
     <div class="card">
         <div class="title-sm">① 薬品マスタ(CSV)を読み込む</div>
-        <!-- ネイティブの挙動に合わせ、inputタグをボタンのクリックで連動させる -->
         <input type="file" id="filePicker" accept=".csv" style="display: none;">
         <button type="button" id="btnLoadMaster" onclick="document.getElementById('filePicker').click();">📁 CSVファイルを選択</button>
         <div id="tvMasterStatus">❌ マスタ未読込</div>
@@ -215,7 +214,6 @@
         let currentScannedName = "";
         let currentScannedUnit = "";
 
-        // Scandit 関連のグローバル管理
         let context = null;
         let barcodeCapture = null;
         let camera = null;
@@ -227,7 +225,6 @@
             if (!file) return;
 
             const reader = new FileReader();
-            // ネイティブアプリはShift-JIS前提のため合わせる
             reader.readAsText(file, 'Shift-JIS');
             reader.onload = function(evt) {
                 try {
@@ -236,7 +233,6 @@
 
                     lines.forEach(line => {
                         if (!line.trim()) return;
-                        // 簡易カンマ区切り (クォーテーション除去)
                         const tokens = line.split(',').map(t => t.trim().replace(/^"|"$/g, ''));
                         
                         if (tokens.length >= 33) {
@@ -248,18 +244,15 @@
                             const code30 = tokens[29];
                             const code33 = tokens[32];
 
-                            // 30番目のコード（元梱）
                             if (code30) {
                                 masterData.set(code30, { drugName: name, pkgQty: pkgQty, pkgUnit: pkgUnit });
                             }
-                            // 33番目のコード（調剤包装）
                             if (code33) {
                                 masterData.set(code33, { drugName: name, pkgQty: dispQty, pkgUnit: dispUnit });
                             }
                         }
                     });
 
-                    // 読込完了後の画面更新 (ネイティブの挙動)
                     const statusText = document.getElementById('tvMasterStatus');
                     statusText.textContent = `✅ 読込完了: ${masterData.size}件`;
                     statusText.style.color = '#388E3C';
@@ -276,48 +269,38 @@
 
         // --- 2. Scandit Web SDK 初期化 & 起動 ---
         async function initAndStartScandit() {
-            // 💡 グローバルオブジェクトの揺らぎを吸収 (Scandit または ScanditDatacaptureBarcode)
-            const sd = window.Scandit || window.ScanditDatacaptureBarcode;
+            // 💡 【修正点】ブラウザ読み込み時に生成される「Scandit」グローバルオブジェクトを直感的に捕捉します
+            if (!window.Scandit) {
+                alert("ライブラリの読み込みファイル形式が正しくありません。");
+                return;
+            }
 
             if (context) {
-                if (camera) await camera.switchToDesiredState(sd.FrameSourceState.On);
+                if (camera) await camera.switchToDesiredState(Scandit.FrameSourceState.On);
                 barcodeCapture.isEnabled = true;
                 return;
             }
 
-            // 読込遅延対策
-            let targetSDK = sd;
-            for (let i = 0; i < 50; i++) {
-                targetSDK = window.Scandit || window.ScanditDatacaptureBarcode;
-                if (targetSDK) break;
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-
-            if (!targetSDK) {
-                alert("Scandit SDKの読み込みに失敗しました。ネット接続やURLを確認してください。");
-                return;
-            }
-
             try {
-                // 💡 正しいバージョン（6.28.1）の配信ディレクトリを明示
-                await targetSDK.configure({
+                // 💡 【超重要修正】公式CDNの最新構造に完全に合致するようパスを修正
+                await Scandit.configure({
                     licenseKey: scanditLicenseKey,
-                    libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.28.1/build/"
+                    libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-barcode@6.26.0/build/"
                 });
 
                 // コンテキストと設定の生成
-                context = await targetSDK.DataCaptureContext.forLicenseKey(scanditLicenseKey);
-                const settings = new targetSDK.BarcodeCaptureSettings();
+                context = await Scandit.DataCaptureContext.forLicenseKey(scanditLicenseKey);
+                const settings = new Scandit.BarcodeCaptureSettings();
                 
                 // ネイティブアプリと同様のバーコード規格を有効化[cite: 2]
                 settings.enableSymbologies([
-                    targetSDK.Symbology.GS1DataBar,
-                    targetSDK.Symbology.GS1DataBarLimited,
-                    targetSDK.Symbology.GS1DataBarExpanded,
-                    targetSDK.Symbology.EAN13UPCA
+                    Scandit.Symbology.GS1DataBar,
+                    Scandit.Symbology.GS1DataBarLimited,
+                    Scandit.Symbology.GS1DataBarExpanded,
+                    Scandit.Symbology.EAN13UPCA
                 ]);
 
-                barcodeCapture = await targetSDK.BarcodeCapture.forContext(context, settings);
+                barcodeCapture = await Scandit.BarcodeCapture.forContext(context, settings);
                 
                 // スキャンイベントリスナー[cite: 2]
                 barcodeCapture.addListener({
@@ -332,33 +315,32 @@
                 });
 
                 // カメラ設定[cite: 2]
-                camera = targetSDK.Camera.default;
+                camera = Scandit.Camera.default;
                 if (camera) {
-                    const cameraSettings = targetSDK.BarcodeCapture.recommendedCameraSettings;
-                    cameraSettings.preferredResolution = targetSDK.VideoResolution.FullHD; //[cite: 2]
+                    const cameraSettings = Scandit.BarcodeCapture.recommendedCameraSettings;
+                    cameraSettings.preferredResolution = Scandit.VideoResolution.FullHD; //[cite: 2]
                     await camera.applySettings(cameraSettings);
                     await context.setFrameSource(camera); //[cite: 2]
                 }
 
                 // プレビュー表示[cite: 2]
-                view = await targetSDK.DataCaptureView.forContext(context);
+                view = await Scandit.DataCaptureView.forContext(context);
                 view.connectToElement(document.getElementById('previewView'));
                 
-                const overlay = await targetSDK.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
+                const overlay = await Scandit.BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
                 
                 // カメラをONに[cite: 2]
-                await camera.switchToDesiredState(targetSDK.FrameSourceState.On);
+                await camera.switchToDesiredState(Scandit.FrameSourceState.On);
                 barcodeCapture.isEnabled = true; //[cite: 2]
 
             } catch (error) {
                 alert("Scanditの初期化中にエラーが発生しました: " + error);
             }
         }
-        
+
         // --- 3. バーコード検出時の検索・UI反映 ---
         function onScanSuccess(decodedText) {
             let code = decodedText.trim();
-            // 先頭「01」の14桁対応
             if (code.length >= 14 && code.startsWith("01")) {
                 code = code.substring(2);
             }
@@ -399,7 +381,6 @@
                 return;
             }
 
-            // 重複チェック
             const duplicateIndex = scannedList.findIndex(item => item.code === currentScannedCode);
 
             if (duplicateIndex !== -1) {
@@ -408,10 +389,9 @@
                     scannedList[duplicateIndex].qty = qty;
                     finalizeScanAddition();
                 } else {
-                    barcodeCapture.isEnabled = true; // 再開
+                    barcodeCapture.isEnabled = true;
                 }
             } else {
-                // 新規追加
                 scannedList.push({
                     code: currentScannedCode,
                     name: currentScannedName,
@@ -426,7 +406,7 @@
             updateTable();
             document.getElementById('resultArea').style.display = 'none';
             document.getElementById('etQty').value = "0";
-            barcodeCapture.isEnabled = true; // スキャン再開
+            barcodeCapture.isEnabled = true;
         }
 
         document.getElementById('btnCancel').addEventListener('click', function() {
@@ -437,7 +417,7 @@
 
         // --- 5. リストの描画 ＆ 修正・削除 ---
         function updateTable() {
-            document.getElementById('tvCount').textContent = `${scannedList.size || scannedList.length}件`;
+            document.getElementById('tvCount').textContent = `${scannedList.length}件`;
             const container = document.getElementById('tvListView');
 
             if (scannedList.length === 0) {
@@ -463,7 +443,7 @@
             const item = scannedList[index];
             const newQty = prompt(`【数量の修正 / 削除】\n薬品: ${item.name}\nコード: ${item.code}\n\n新しい数量を入力してください（空欄にして削除を選ぶことも可能です）`, item.qty);
             
-            if (newQty === null) return; // キャンセル
+            if (newQty === null) return;
 
             if (newQty.trim() === "") {
                 const delConf = confirm("この行を削除しますか？");
@@ -478,13 +458,12 @@
         }
 
         // --- 6. 各種アクション (CSV出力・A4印刷・全クリア) ---
-        // 📥 CSV出力
         document.getElementById('btnExportCSV').addEventListener('click', function() {
             if (scannedList.length === 0) {
                 alert("データがありません");
                 return;
             }
-            let csvContent = "\ufeffコード,薬品名,数量\n"; // Excel用BOM付き
+            let csvContent = "\ufeffコード,薬品名,数量\n";
             scannedList.forEach(item => {
                 csvContent += `${item.code},${item.name},${item.qty}\n`;
             });
@@ -498,14 +477,12 @@
             URL.revokeObjectURL(url);
         });
 
-        // 🖨️ A4 50音順印刷
         document.getElementById('btnPrintAll').addEventListener('click', function() {
             if (scannedList.length === 0) {
                 alert("印刷するデータがありません");
                 return;
             }
 
-            // 医薬品名の50音順にソート
             const sortedList = [...scannedList].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
             let htmlRows = "";
@@ -521,7 +498,6 @@
 
             const nowStr = new Date().toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-            // 新しいウィンドウ（またはiframe）を開いてプリント
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
                 <!DOCTYPE html>
@@ -571,14 +547,12 @@
             `);
             printWindow.document.close();
             printWindow.focus();
-            // ページロードを少し待って印刷ダイアログを起動
             setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
             }, 500);
         });
 
-        // 🗑️ 全クリア
         document.getElementById('btnClearAll').addEventListener('click', function() {
             if (scannedList.length === 0) {
                 alert("クリアするデータがありません");
