@@ -51,7 +51,7 @@
         <h3>① 薬品マスタ(CSV)を読み込む</h3>
         <p><small>形式: JAN/GS1コード, 薬品名 (ヘッダーなし・Shift-JIS推奨)</small></p>
         <input type="file" id="csvFile" accept=".csv">
-        <p id="masterStatus" style="color: red; font-weight: bold;">マスタ未読込</p>
+        <p id="masterStatus" style="color: Red; font-weight: bold;">マスタ未読込</p>
     </div>
 
     <hr>
@@ -157,36 +157,33 @@
         if (isScannerInitialized) return;
 
         try {
-            // ライセンスキーとエンジンの場所を指定
+            // 【修正箇所】libraryLocation のパスを /build/browser/ に変更
+            // 情報源: Scandit Data Capture SDK Web v7 Release Notes & Framework Structure
             await ScanditCaptureCore.configure({
-                licenseKey: "Ap2n4AY6LkgGCmYsc//yHzEMQWGoPfhntho2aI4cbnGnSZjyQ1SSv55bzdMQdF06fWmAABpPVBwYFDWnLE50TbhJKmeqZgmHeU56Tvps6BZ2FRYOgxFjfN4Dz/QJUduBfwJNgccBG7e0UO0+vmFJE8h0SCwwX0X8ym91zRVxJynyZnT5Mkvjk55muFF4YvZZWE+iqSddSqtKSpCZ32mGlC5izwRzF5BGa21C3OtdCTU8fdYB9kwP7MhYYn9qc+HBxUE3lpJ7GgKpelJ5LUn6bcp09XArSgMsbUHnC4JFrCA9dS5sWkXjD8lPwkwhTx77/WNswyx+ugNjE04dmm/rknN/eqaHAu6OXh/RgqZdJXm5Sd/+zlj75sFVTDvrTAyNpHxjGfNxu1bgUV5oD2Ly3It2aV4TQvDWrjoXyZJqIhsUeG1TOzbgGzlyS346aG9aaDspnIg8l5OKADlqLg/skgR6PFLqYVxXTUZ9y7koW/9LYWOT+3a1sAd74+W1djxv31lBbmRF1WWxYJYZgw4OgCUKheJaGkT/9IiuQYRkqI8nQpC9xBOqDD2xb23uXnhdGIaWJl9PVhWKmlnb88d2R5XuDJzv5pfU5xCdV7BgRAFUSopMicUzNcScCwu8SFOK8lBiwg/6zq78zRsLHg8hAki8XV4yDQvfGjyNtROXz9Ye3dTzom0xnCBBlTN0rcbswXs7zR1qYq9ERojMRme/SEiA20ucHIh1rH8AfaIWy4q5TcKN1Vn3bA7nXyX1w6mblqNJRiDLeWJPaaHyDnhW3eWpYegjuiSQxr6G2Ijblhx+88rsXFGoomap4CqGMsOlmfU4ANrVSMRbYI9bc09TXbmDOZH886GaemXns859pJw0zgCEASbG8fkfmVjvxp09Tb/7ke3mFqvT4pWrREAwVxO1kBduuLIqtW3DlKY+7YCrv/TerBcC3gvN3Tb3ZCgwmBiART/7GNDkYTP3Aa3lBLACHiLri6N1xsr3Yq5K9zuvrtmY+gO+D70SRDXJTLhe0LPNWGGkA/n2SbJaKfUxcF7/rTGNsmm5ksVGcg2v7KfGImExlNTr2B7v3DMQjty4NStUFELJMNCF06CYD/UHvJ3qyeS/R86ZTVGHJ1mg/QKQy2DMJ/3ZjN9k6U8CvMEe0lvUQ9gGIxkx81QMHwsbaftaPae9RHwpwarPVZB3QT/izYOSPyXAO298l3aY7IF59f/eZg==", // ←ここに試用版ライセンスキーを貼り付けてください
-                libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-core@7.x/build/engine/",
+                licenseKey: "Ap2n4AY6LkgGCmYsc//yHzEMQWGoPfhntho2aI4cbnGnSZjyQ1SSv55bzdMQdF06fWmAABpPVBwYFDWnLE50TbhJKmeqZgmHeU56Tvps6BZ2FRYOgxFjfN4Dz/QJUduBfwJNgccBG7e0UO0+vmFJE8h0SCwwX0X8ym91zRVxJynyZnT5Mkvjk55muFF4YvZZWE+iqSddSqtKSpCZ32mGlC5izwRzF5BGa21C3OtdCTU8fdYB9kwP7MhYYn9qc+HBxUE3lpJ7GgKpelJ5LUn6bcp09XArSgMsbUHnC4JFrCA9dS5sWkXjD8lPwkwhTx77/WNswyx+ugNjE04dmm/rknN/eqaHAu6OXh/RgqZdJXm5Sd/+zlj75sFVTDvrTAyNpHxjGfNxu1bgUV5oD2Ly3It2aV4TQvDWrjoXyZJqIhsUeG1TOzbgGzlyS346aG9aaDspnIg8l5OKADlqLg/skgR6PFLqYVxXTUZ9y7koW/9LYWOT+3a1sAd74+W1djxv31lBbmRF1WWxYJYZgw4OgCUKheJaGkT/9IiuQYRkqI8nQpC9xBOqDD2xb23uXnhdGIaWJl9PVhWKmlnb88d2R5XuDJzv5pfU5xCdV7BgRAFUSopMicUzNcScCwu8SFOK8lBiwg/6zq78zRsLHg8hAki8XV4yDQvfGjyNtROXz9Ye3dTzom0xnCBBlTN0rcbswXs7zR1qYq9ERojMRme/SEiA20ucHIh1rH8AfaIWy4q5TcKN1Vn3bA7nXyX1w6mblqNJRiDLeWJPaaHyDnhW3eWpYegjuiSQxr6G2Ijblhx+88rsXFGoomap4CqGMsOlmfU4ANrVSMRbYI9bc09TXbmDOZH886GaemXns859pJw0zgCEASbG8fkfmVjvxp09Tb/7ke3mFqvT4pWrREAwVxO1kBduuLIqtW3DlKY+7YCrv/TerBcC3gvN3Tb3ZCgwmBiART/7GNDkYTP3Aa3lBLACHiLri6N1xsr3Yq5K9zuvrtmY+gO+D70SRDXJTLhe0LPNWGGkA/n2SbJaKfUxcF7/rTGNsmm5ksVGcg2v7KfGImExlNTr2B7v3DMQjty4NStUFELJMNCF06CYD/UHvJ3qyeS/R86ZTVGHJ1mg/QKQy2DMJ/3ZjN9k6U8CvMEe0lvUQ9gGIxkx81QMHwsbaftaPae9RHwpwarPVZB3QT/izYOSPyXAO298l3aY7IF59f/eZg==",
+                libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-core@7.x/build/browser/",
                 moduleLoaders: [ScanditBarcodeCapture.barcodeCaptureLoader()]
             });
 
             scanditContext = ScanditCaptureCore.DataCaptureContext.create();
 
-            // 医療現場で必須となるシンボル（バーコード規格）の有効化
             const settings = new ScanditBarcodeCapture.BarcodeCaptureSettings();
             settings.enableSymbologies([
-                ScanditCaptureCore.Symbology.EAN13UPCA, // 一般的なJAN
-                ScanditCaptureCore.Symbology.GS1Databar, // 医療用GS1データバー
+                ScanditCaptureCore.Symbology.EAN13UPCA, 
+                ScanditCaptureCore.Symbology.GS1Databar, 
                 ScanditCaptureCore.Symbology.GS1DatabarExpanded,
                 ScanditCaptureCore.Symbology.GS1DatabarLimited,
-                ScanditCaptureCore.Symbology.Code128, // 医療材料などに多いGS1-128
-                ScanditCaptureCore.Symbology.DataMatrix // 調剤包装単位の二次元コード
+                ScanditCaptureCore.Symbology.Code128, 
+                ScanditCaptureCore.Symbology.DataMatrix 
             ]);
 
             barcodeCapture = ScanditBarcodeCapture.BarcodeCapture.forContext(scanditContext, settings);
 
-            // スキャン成功時のイベントリスナー
             barcodeCapture.addListener({
                 didScan: (barcodeCapture, session) => {
                     const barcode = session.newlyRecognizedBarcodes[0];
-                    // 連続スキャンを防ぐため、数量入力が終わるまでスキャン機能を一時停止
                     barcodeCapture.isEnabled = false;
                     
-                    // UI更新のためメインスレッドへ処理を渡す
                     requestAnimationFrame(() => {
                         onScanSuccess(barcode.data);
                     });
@@ -200,7 +197,6 @@
             const dataCaptureView = ScanditCaptureCore.DataCaptureView.forContext(scanditContext);
             dataCaptureView.connectToElement(viewElement);
             
-            // スキャン範囲の枠（ファインダー）を表示
             dataCaptureView.addOverlay(
                 ScanditBarcodeCapture.BarcodeCaptureOverlay.withBarcodeCaptureForViewWithStyle(
                     barcodeCapture,
@@ -225,7 +221,6 @@
             await initScandit();
         }
         
-        // カメラとスキャンを再開
         await camera.switchToDesiredState(ScanditCaptureCore.FrameSourceState.On);
         barcodeCapture.isEnabled = true;
     }
@@ -234,7 +229,6 @@
         let searchCode = decodedText.trim();
         let name = masterData[searchCode];
 
-        // 14桁以上のGS1で、先頭が01の場合のフォールバック
         if (!name && searchCode.startsWith("01") && searchCode.length >= 14) {
             searchCode = searchCode.substring(2);
             name = masterData[searchCode];
@@ -242,7 +236,6 @@
         
         name = name || "マスタ未登録の薬品";
         
-        // スキャン画面を非表示にし、数量入力画面を表示
         document.getElementById('scandit-barcode-picker').style.display = "none";
         document.getElementById('scanResult').style.display = "block";
         
@@ -250,12 +243,11 @@
         document.getElementById('displayName').innerText = name;
         
         const qtyInput = document.getElementById('inputQty');
-        qtyInput.value = "1"; // デフォルトを1にしておくと入力の手間が省ける場合があります
+        qtyInput.value = "1"; 
         qtyInput.focus();
         qtyInput.select();
     }
 
-    // --- 数量入力・リスト操作ロジック ---
     document.getElementById('inputQty').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             addToList();
@@ -280,12 +272,10 @@
         localStorage.setItem('scannedList', JSON.stringify(scannedList));
         updateTable();
         
-        // 数量確定後、自動的にスキャン画面へ復帰させる
         startScanner();
     }
 
     function cancelInput() {
-        // キャンセルした場合は入力をクリアしてスキャン画面へ戻る
         startScanner();
     }
 
@@ -317,7 +307,6 @@
             document.getElementById('scanResult').style.display = "none";
             document.getElementById('startScanBtn').style.display = "block";
             
-            // カメラをオフにする
             if (camera) {
                 camera.switchToDesiredState(ScanditCaptureCore.FrameSourceState.Off);
             }
