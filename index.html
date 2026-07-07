@@ -158,23 +158,23 @@
 
         try {
             // ライセンスキーとエンジンの場所を指定
-            await ScanditDataCaptureCore.configure({
+            await ScanditCaptureCore.configure({
                 licenseKey: "Ap2n4AY6LkgGCmYsc//yHzEMQWGoPfhntho2aI4cbnGnSZjyQ1SSv55bzdMQdF06fWmAABpPVBwYFDWnLE50TbhJKmeqZgmHeU56Tvps6BZ2FRYOgxFjfN4Dz/QJUduBfwJNgccBG7e0UO0+vmFJE8h0SCwwX0X8ym91zRVxJynyZnT5Mkvjk55muFF4YvZZWE+iqSddSqtKSpCZ32mGlC5izwRzF5BGa21C3OtdCTU8fdYB9kwP7MhYYn9qc+HBxUE3lpJ7GgKpelJ5LUn6bcp09XArSgMsbUHnC4JFrCA9dS5sWkXjD8lPwkwhTx77/WNswyx+ugNjE04dmm/rknN/eqaHAu6OXh/RgqZdJXm5Sd/+zlj75sFVTDvrTAyNpHxjGfNxu1bgUV5oD2Ly3It2aV4TQvDWrjoXyZJqIhsUeG1TOzbgGzlyS346aG9aaDspnIg8l5OKADlqLg/skgR6PFLqYVxXTUZ9y7koW/9LYWOT+3a1sAd74+W1djxv31lBbmRF1WWxYJYZgw4OgCUKheJaGkT/9IiuQYRkqI8nQpC9xBOqDD2xb23uXnhdGIaWJl9PVhWKmlnb88d2R5XuDJzv5pfU5xCdV7BgRAFUSopMicUzNcScCwu8SFOK8lBiwg/6zq78zRsLHg8hAki8XV4yDQvfGjyNtROXz9Ye3dTzom0xnCBBlTN0rcbswXs7zR1qYq9ERojMRme/SEiA20ucHIh1rH8AfaIWy4q5TcKN1Vn3bA7nXyX1w6mblqNJRiDLeWJPaaHyDnhW3eWpYegjuiSQxr6G2Ijblhx+88rsXFGoomap4CqGMsOlmfU4ANrVSMRbYI9bc09TXbmDOZH886GaemXns859pJw0zgCEASbG8fkfmVjvxp09Tb/7ke3mFqvT4pWrREAwVxO1kBduuLIqtW3DlKY+7YCrv/TerBcC3gvN3Tb3ZCgwmBiART/7GNDkYTP3Aa3lBLACHiLri6N1xsr3Yq5K9zuvrtmY+gO+D70SRDXJTLhe0LPNWGGkA/n2SbJaKfUxcF7/rTGNsmm5ksVGcg2v7KfGImExlNTr2B7v3DMQjty4NStUFELJMNCF06CYD/UHvJ3qyeS/R86ZTVGHJ1mg/QKQy2DMJ/3ZjN9k6U8CvMEe0lvUQ9gGIxkx81QMHwsbaftaPae9RHwpwarPVZB3QT/izYOSPyXAO298l3aY7IF59f/eZg==", // ←ここに試用版ライセンスキーを貼り付けてください
                 libraryLocation: "https://cdn.jsdelivr.net/npm/scandit-web-datacapture-core@7.x/build/engine/",
                 moduleLoaders: [ScanditBarcodeCapture.barcodeCaptureLoader()]
             });
 
-            scanditContext = ScanditDataCaptureCore.DataCaptureContext.create();
+            scanditContext = ScanditCaptureCore.DataCaptureContext.create();
 
             // 医療現場で必須となるシンボル（バーコード規格）の有効化
             const settings = new ScanditBarcodeCapture.BarcodeCaptureSettings();
             settings.enableSymbologies([
-                ScanditDataCaptureCore.Symbology.EAN13UPCA, // 一般的なJAN
-                ScanditDataCaptureCore.Symbology.GS1Databar, // 医療用GS1データバー
-                ScanditDataCaptureCore.Symbology.GS1DatabarExpanded,
-                ScanditDataCaptureCore.Symbology.GS1DatabarLimited,
-                ScanditDataCaptureCore.Symbology.Code128, // 医療材料などに多いGS1-128
-                ScanditDataCaptureCore.Symbology.DataMatrix // 調剤包装単位の二次元コード
+                ScanditCaptureCore.Symbology.EAN13UPCA, // 一般的なJAN
+                ScanditCaptureCore.Symbology.GS1Databar, // 医療用GS1データバー
+                ScanditCaptureCore.Symbology.GS1DatabarExpanded,
+                ScanditCaptureCore.Symbology.GS1DatabarLimited,
+                ScanditCaptureCore.Symbology.Code128, // 医療材料などに多いGS1-128
+                ScanditCaptureCore.Symbology.DataMatrix // 調剤包装単位の二次元コード
             ]);
 
             barcodeCapture = ScanditBarcodeCapture.BarcodeCapture.forContext(scanditContext, settings);
@@ -193,11 +193,11 @@
                 }
             });
 
-            camera = ScanditDataCaptureCore.Camera.default;
+            camera = ScanditCaptureCore.Camera.default;
             scanditContext.setFrameSource(camera);
 
             const viewElement = document.getElementById("scandit-barcode-picker");
-            const dataCaptureView = ScanditDataCaptureCore.DataCaptureView.forContext(scanditContext);
+            const dataCaptureView = ScanditCaptureCore.DataCaptureView.forContext(scanditContext);
             dataCaptureView.connectToElement(viewElement);
             
             // スキャン範囲の枠（ファインダー）を表示
@@ -226,7 +226,7 @@
         }
         
         // カメラとスキャンを再開
-        await camera.switchToDesiredState(ScanditDataCaptureCore.FrameSourceState.On);
+        await camera.switchToDesiredState(ScanditCaptureCore.FrameSourceState.On);
         barcodeCapture.isEnabled = true;
     }
 
@@ -319,7 +319,7 @@
             
             // カメラをオフにする
             if (camera) {
-                camera.switchToDesiredState(ScanditDataCaptureCore.FrameSourceState.Off);
+                camera.switchToDesiredState(ScanditCaptureCore.FrameSourceState.Off);
             }
         }
     }
