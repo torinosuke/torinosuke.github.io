@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>簡易棚卸システム（Scandit Web SDK v7 修正統合版）</title>
+    <title>簡易棚卸システム（安全分離・統合版）</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 
@@ -11,7 +11,9 @@
     {
         "imports": {
             "@scandit/web-datacapture-core": "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.6.14/build/js/index.js",
-            "@scandit/web-datacapture-barcode": "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.6.14/build/js/index.js"
+            "@scandit/web-datacapture-core/": "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.6.14/",
+            "@scandit/web-datacapture-barcode": "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.6.14/build/js/index.js",
+            "@scandit/web-datacapture-barcode/": "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.6.14/"
         }
     }
     </script>
@@ -102,6 +104,151 @@
     </div>
 </div>
 
+<script>
+    // グローバル状態管理
+    window.masterData = {}; 
+    window.scannedList = []; 
+
+    // ページロード時のデータ復元処理
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedMaster = localStorage.getItem('masterData');
+        if (savedMaster) {
+            window.masterData = JSON.parse(savedMaster);
+            document.getElementById('masterStatus').innerText = `✅ マスタ復元完了: ${Object.keys(window.masterData).length}件`;
+            document.getElementById('masterStatus').style.color = "green";
+            document.getElementById('step2').classList.remove('hidden');
+        }
+
+        const savedList = localStorage.getItem('scannedList');
+        if (savedList) {
+            window.scannedList = JSON.parse(savedList);
+            updateTable();
+        }
+
+        // CSVファイルの読み込みイベント（ここが絶対に動くようになります）
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                encoding: "Shift-JIS",
+                complete: function(results) {
+                    window.masterData = {}; 
+                    results.data.forEach(row => {
+                        if(row.length >= 2 && row[0]) {
+                            const rawCode = row[0].trim();
+                            const cleanCode = rawCode.replace(/^01/, ''); 
+                            window.masterData[rawCode] = row[1].trim();
+                            if (cleanCode !== rawCode) {
+                                window.masterData[cleanCode] = row[1].trim();
+                            }
+                        }
+                    });
+                    
+                    localStorage.setItem('masterData', JSON.stringify(window.masterData));
+                    document.getElementById('masterStatus').innerText = `✅ 読込完了: ${Object.keys(window.masterData).length}件`;
+                    document.getElementById('masterStatus').style.color = "green";
+                    document.getElementById('step2').classList.remove('hidden');
+                }
+            });
+        });
+    });
+
+    // 数量入力時のEnterキー検知
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('inputQty').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                addToList();
+            }
+        });
+    });
+
+    // リストに追加処理
+    function addToList() {
+        const code = document.getElementById('displayCode').innerText;
+        const name = document.getElementById('displayName').innerText;
+        const qtyStr = document.getElementById('inputQty').value;
+
+        if(!qtyStr) { alert("数量を入力してください"); return; }
+        const qty = parseFloat(qtyStr);
+
+        const existingItem = window.scannedList.find(item => item.code === code);
+        if (existingItem) {
+            existingItem.qty = Number(existingItem.qty) + qty;
+        } else {
+            window.scannedList.push({ code, name, qty });
+        }
+        
+        localStorage.setItem('scannedList', JSON.stringify(window.scannedList));
+        updateTable();
+        
+        // モジュール側のカメラ再起動関数を呼び出す
+        if (window.startScanner) { window.startScanner(); }
+    }
+
+    // テーブルUIの更新
+    function updateTable() {
+        const tbody = document.querySelector('#listTable tbody');
+        tbody.innerHTML = "";
+        window.scannedList.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${escapeHtml(item.code)}</td><td>${escapeHtml(item.name)}</td><td>${item.qty}</td>`;
+            tbody.appendChild(row);
+        });
+        document.getElementById('count').innerText = window.scannedList.length;
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // データの全消去
+    function clearAllData() {
+        if (confirm("スキャン済みのリストとマスタデータをすべて消去します。よろしいですか？")) {
+            localStorage.clear();
+            window.masterData = {};
+            window.scannedList = [];
+            updateTable();
+            document.getElementById('masterStatus').innerText = "マスタ未読込";
+            document.getElementById('masterStatus').style.color = "red";
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('scandit-barcode-picker').style.display = "none";
+            document.getElementById('scanResult').style.display = "none";
+            document.getElementById('startScanBtn').style.display = "block";
+            
+            if (window.stopCameraInstance) { window.stopCameraInstance(); }
+        }
+    }
+
+    // 棚卸結果のCSVダウンロード
+    function downloadCSV() {
+        if(window.scannedList.length === 0) { alert("データがありません"); return; }
+        
+        let csvContent = "コード,薬品名,数量\n";
+        window.scannedList.forEach(item => {
+            const safeName = item.name.replace(/"/g, '""');
+            csvContent += `"${item.code}","${safeName}",${item.qty}\n`;
+        });
+
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); 
+        const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = window.URL.createObjectURL(blob);
+        
+        const a = document.createElement("a");
+        a.href = url;
+        
+        const now = new Date();
+        const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+        a.download = `棚卸結果_${dateStr}.csv`;
+        a.click();
+    }
+
+    // 外部（モジュール）から呼べるように関数を公開
+    window.addToList = addToList;
+    window.clearAllData = clearAllData;
+    window.downloadCSV = downloadCSV;
+</script>
+
 <script type="module">
     import {
         DataCaptureContext,
@@ -119,71 +266,17 @@
         barcodeCaptureLoader
     } from "@scandit/web-datacapture-barcode";
 
-    // --- アプリケーションの状態管理 ---
-    let masterData = {}; 
-    let scannedList = []; 
-
-    // --- Scandit SDK の管理変数 ---
     let context;
     let camera;
     let barcodeCapture;
     let view;
     let isScannerInitialized = false;
 
-    // Tanaoroshi-WebApp用のライセンスキー
-    const licenseKey = "Ap2n4AY6LkgGCmYsc//yHzEMQWGoPfhntho2aI4cbnGnSZjyQ1SSv55bzdMQdF06fWmAABpPVBwYFDWnLE50TbhJKmeqZgmHeU56Tvps6BZ2FRYOgxFjfN4Dz/QJUduBfwJNgccBG7e0UO0+vmFJE8h0SCwwX0X8ym91zRVxJynyZnT5Mkvjk55muFF4YvZZWE+iqSddSqtKSpCZ32mGlC5izwRzF5BGa21C3OtdCTU8fdYB9kwP7MhYYn9qc+HBxUE3lpJ7GgKpelJ5LUn6bcp09XArSgMsbUHnC4JFrCA9dS5sWkXjD8lPwkwhTx77/WNswyx+ugNjE04dmm/rknN/eqaHAu6OXh/RgqZdJXm5Sd/+zlj75sFVTDvrTAyNpHxjGfNxu1bgUV5oD2Ly3It2aV4TQvDWrjoXyZJqIhsUeG1TOzbgGzlyS346aG9aaDspnIg8l5OKADlqLg/skgR6PFLqYVxXTUZ9y7koW/9LYWOT+3a1sAd74+W1djxv31lBbmRF1WWxYJYZgw4OgCUKheJaGkT/9IiuQYRkqI8nQpC9xBOqDD2xb23uXnhdGIaWJl9PVhWKmlnb88d2R5XuDJzv5pfU5xCdV7BgRAFUSopMicUzNcScCwu8SFOK8lBiwg/6zq78zRsLHg8hAki8XV4yDQvfGjyNtROXz9Ye3dTzom0xnCBBlTN0rcbswXs7zR1qYq9ERojMRme/SEiA20ucHIh1rH8AfaIWy4q5TcKN1Vn3bA7nXyX1w6mblqNJRiDLeWJPaaHyDnhW3eWpYegjuiSQxr6G2Ijblhx+88rsXFGoomap4CqGMsOlmfU4ANrVSMRbYI9bc09TXbmDOZH886GaemXns859pJw0zgCEASbG8fkfmVjvxp09Tb/7ke3mFqvT4pWrREAwVxO1kBduuLIqtW3DlKY+7YCrv/TerBcC3gvN3Tb3ZCgwmBiART/7GNDkYTP3Aa3lBLACHiLri6N1xsr3Yq5K9zuvrtmY+gO+D70SRDXJTLhe0LPNWGGkA/n2SbJaKfUxcF7/rTGNsmm5ksVGcg2v7KfGImExlNTr2B7v3DMQjty4NStUFELJMNCF06CYD/UHvJ3qyeS/R86ZTVGHJ1mg/QKQy2DMJ/3ZjN9k6U8CvMEe0lvUQ9gGIxkx81QMHwsbaftaPae9RHwpwarPVZB3QT/izYOSPyXAO298l3aY7IF59f/eZg==";
+    const licenseKey = "Ap2n4AY6LkgGCmYsc//yHzEMQWGoPfhntho2aI4cbnGnSZjyQ1SSv55bzdMQdF06fWmAABpPVBwYFDWnLE50TbhJKmeqZgmHeU56Tvps6BZ2FRYOgxFjfN4Dz/QJUduBfwJNgccBG7e0UO0+vmFJE8h0SCwwX0X8ym91zRVxJynyZnT5Mkvjk55muFF4YvZZWE+iqSddSqtKSpCZ32mGlC5izwRzF5BGa21C3OtdCTU8fdYB9kwP7MhYYn9qc+HBxUE3lpJ7GgKpelJ5LUn6bcp09XArSgMsbUHnC4JFrCA9dS5sWkXjD8lPwkwhTx77/WNswyx+ugNjE04dmm/rknN/eqaHAu6OXh/RgqZdJXm5Sd/+zlj75sFVTDvrTAyNpHxjGfNxu1bgUV5oD2Ly3It2aV4TQvDWrjoXyZJqIhsUeG1TOzbgGzlyS346aG9aaDspnIg8l5OKADlqLg/skgR6PFLqYVxXTUZ9y7koW/9LYWOT+3a1sAd74+W1djxv31lBbmRF1WWxYJYZgw4OgCUKheJaGkT/9IiuQYRkqI8nQpC9xBOqDD2xb23uXnhdGIaWJl9PVhWKmlnb88d2R5XuDJzv5pfU5xCdV7BgRAFUSopMicUzNcScCwu8SFOK8lBiwg/6zq78zRsLHg8hAki8XV4yDQvfGjyNtROXz9Ye3dTzom0xnCBBlTN0rcbswXs7zR1qYq9ERojMRme/SEiA20ucHIh1rH8AfaIWy4q5TcKN1Vn3bA7nXyX1w6mblqNJRiDLeWJPaaHyDnhW3eWpYegjuiSQxr6G2Ijblhx+88rsXFGoomap4CqGMsOlmfU4ANrVSMRbYI9bc09TXbmDOZH886GaemXns859pJw0zgCEASbG8fkfmVjvxp09Tb/7ke3mFqvT4pWrREAwVxO1kBduuLIqtW3DlKY+7YCrv/TerBcC3gvN3Tb3ZCgwmBi ART/7GNDkYTP3Aa3lBLACHiLri6N1xsr3Yq5K9zuvrtmY+gO+D70SRDXJTLhe0LPNWGGkA/n2SbJaKfUxcF7/rTGNsmm5ksVGcg2v7KfGImExlNTr2B7v3DMQjty4NStUFELJMNCF06CYD/UHvJ3qyeS/R86ZTVGHJ1mg/QKQy2DMJ/3ZjN9k6U8CvMEe0lvUQ9gGIxkx81QMHwsbaftaPae9RHwpwarPVZB3QT/izYOSPyXAO298l3aY7IF59f/eZg==";
 
-    // --- ページロード時の初期復元処理 ---
-    window.addEventListener('DOMContentLoaded', () => {
-        const savedMaster = localStorage.getItem('masterData');
-        if (savedMaster) {
-            masterData = JSON.parse(savedMaster);
-            document.getElementById('masterStatus').innerText = `✅ マスタ復元完了: ${Object.keys(masterData).length}件`;
-            document.getElementById('masterStatus').style.color = "green";
-            document.getElementById('step2').classList.remove('hidden');
-        }
-
-        const savedList = localStorage.getItem('scannedList');
-        if (savedList) {
-            scannedList = JSON.parse(savedList);
-            updateTable();
-        }
-    });
-
-    // --- CSV薬品マスタのロード処理 ---
-    document.getElementById('csvFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        Papa.parse(file, {
-            encoding: "Shift-JIS",
-            complete: function(results) {
-                masterData = {}; 
-                results.data.forEach(row => {
-                    if(row.length >= 2 && row[0]) {
-                        const rawCode = row[0].trim();
-                        const cleanCode = rawCode.replace(/^01/, ''); 
-                        masterData[rawCode] = row[1].trim();
-                        if (cleanCode !== rawCode) {
-                            masterData[cleanCode] = row[1].trim();
-                        }
-                    }
-                });
-                
-                localStorage.setItem('masterData', JSON.stringify(masterData));
-                document.getElementById('masterStatus').innerText = `✅ 読込完了: ${Object.keys(masterData).length}件`;
-                document.getElementById('masterStatus').style.color = "green";
-                document.getElementById('step2').classList.remove('hidden');
-            }
-        });
-    });
-
-    // --- Scandit SDK v7 初期化処理 ---
     async function initScandit() {
         if (isScannerInitialized) return;
-
         try {
-            // ライブラリ配置先（エンジンファイルの参照先）を指定
             context = await DataCaptureContext.forLicenseKey(licenseKey, {
                 libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.6.14/build/js/sdc-lib/",
                 moduleLoaders: [barcodeCaptureLoader()],
@@ -202,15 +295,10 @@
 
             const settings = new BarcodeCaptureSettings();
             settings.enableSymbologies([
-                Symbology.EAN13,          
-                Symbology.EAN8,           
-                Symbology.Code128,        
-                Symbology.GS1DataMatrix,  
-                Symbology.DataMatrix      
+                Symbology.EAN13, Symbology.EAN8, Symbology.Code128, Symbology.GS1DataMatrix, Symbology.DataMatrix
             ]);
 
             barcodeCapture = BarcodeCapture.forContext(context, settings);
-
             barcodeCapture.addListener({
                 didScan: (barcodeCapture, session) => {
                     const barcode = session.newlyRecognizedBarcodes[0];
@@ -225,54 +313,40 @@
 
             view = new DataCaptureView();
             await view.setContext(context);
-            
             BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
             
             const scannerElement = document.getElementById("scandit-barcode-picker");
-            if (scannerElement) {
-                view.connectToElement(scannerElement);
-            }
-
+            if (scannerElement) { view.connectToElement(scannerElement); }
             isScannerInitialized = true;
         } catch (error) {
             console.error("Scandit初期化エラー:", error);
-            alert("カメラの初期化に失敗しました。カメラのアクセス許可を確認してください。");
+            alert("カメラの初期化に失敗しました。ブラウザのコンソールをご確認ください。");
         }
     }
 
-    // --- スキャナー起動制御 ---
     async function startScanner() {
         document.getElementById('scandit-barcode-picker').style.display = "block";
         document.getElementById('startScanBtn').style.display = "none";
         document.getElementById('scanResult').style.display = "none";
 
-        if (!isScannerInitialized) {
-            await initScandit();
-        }
-        
-        if (camera) {
-            await camera.switchToDesiredState(FrameSourceState.On);
-        }
-        if (barcodeCapture) {
-            barcodeCapture.isEnabled = true;
-        }
+        if (!isScannerInitialized) { await initScandit(); }
+        if (camera) { await camera.switchToDesiredState(FrameSourceState.On); }
+        if (barcodeCapture) { barcodeCapture.isEnabled = true; }
     }
 
-    // --- スキャン成功時の処理 ---
     function onScanSuccess(decodedText) {
         let searchCode = decodedText.trim();
-        let name = masterData[searchCode];
+        let name = window.masterData[searchCode];
 
         if (!name && searchCode.startsWith("01") && searchCode.length >= 14) {
             searchCode = searchCode.substring(2);
-            name = masterData[searchCode];
+            name = window.masterData[searchCode];
         }
         
         name = name || "マスタ未登録の薬品";
         
         document.getElementById('scandit-barcode-picker').style.display = "none";
         document.getElementById('scanResult').style.display = "block";
-        
         document.getElementById('displayCode').innerText = decodedText;
         document.getElementById('displayName').innerText = name;
         
@@ -281,109 +355,16 @@
         qtyInput.focus();
         qtyInput.select();
 
-        if (camera) {
-            camera.switchToDesiredState(FrameSourceState.Off);
-        }
+        if (camera) { camera.switchToDesiredState(FrameSourceState.Off); }
     }
 
-    document.getElementById('inputQty').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            addToList();
-        }
-    });
+    function cancelInput() { startScanner(); }
+    function stopCameraInstance() { if (camera) { camera.switchToDesiredState(FrameSourceState.Off); } }
 
-    // --- リストに追加処理 ---
-    function addToList() {
-        const code = document.getElementById('displayCode').innerText;
-        const name = document.getElementById('displayName').innerText;
-        const qtyStr = document.getElementById('inputQty').value;
-
-        if(!qtyStr) { alert("数量を入力してください"); return; }
-        const qty = parseFloat(qtyStr);
-
-        const existingItem = scannedList.find(item => item.code === code);
-        if (existingItem) {
-            existingItem.qty = Number(existingItem.qty) + qty;
-        } else {
-            scannedList.push({ code, name, qty });
-        }
-        
-        localStorage.setItem('scannedList', JSON.stringify(scannedList));
-        updateTable();
-        
-        startScanner();
-    }
-
-    // --- 入力キャンセル ---
-    function cancelInput() {
-        startScanner();
-    }
-
-    // --- テーブルUIの更新表示 ---
-    function updateTable() {
-        const tbody = document.querySelector('#listTable tbody');
-        tbody.innerHTML = "";
-        scannedList.forEach(item => {
-            const row = document.createElement('tr');
-            row.innerHTML = `<td>${escapeHtml(item.code)}</td><td>${escapeHtml(item.name)}</td><td>${item.qty}</td>`;
-            tbody.appendChild(row);
-        });
-        document.getElementById('count').innerText = scannedList.length;
-    }
-
-    function escapeHtml(str) {
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    // --- データの全消去（初期化） ---
-    function clearAllData() {
-        if (confirm("スキャン済みのリストとマスタデータをすべて消去します。よろしいですか？")) {
-            localStorage.clear();
-            masterData = {};
-            scannedList = [];
-            updateTable();
-            document.getElementById('masterStatus').innerText = "マスタ未読込";
-            document.getElementById('masterStatus').style.color = "red";
-            document.getElementById('step2').classList.add('hidden');
-            document.getElementById('scandit-barcode-picker').style.display = "none";
-            document.getElementById('scanResult').style.display = "none";
-            document.getElementById('startScanBtn').style.display = "block";
-            
-            if (camera) {
-                camera.switchToDesiredState(FrameSourceState.Off);
-            }
-        }
-    }
-
-    // --- 棚卸結果のCSVダウンロード ---
-    function downloadCSV() {
-        if(scannedList.length === 0) { alert("データがありません"); return; }
-        
-        let csvContent = "コード,薬品名,数量\n";
-        scannedList.forEach(item => {
-            const safeName = item.name.replace(/"/g, '""');
-            csvContent += `"${item.code}","${safeName}",${item.qty}\n`;
-        });
-
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); 
-        const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
-        const url = window.URL.createObjectURL(blob);
-        
-        const a = document.createElement("a");
-        a.href = url;
-        
-        const now = new Date();
-        const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-        a.download = `棚卸結果_${dateStr}.csv`;
-        a.click();
-    }
-
-    // 各関数を window オブジェクトへマッピング
+    // HTML側のボタンから呼び出せるように window オブジェクトに登録
     window.startScanner = startScanner;
     window.cancelInput = cancelInput;
-    window.addToList = addToList;
-    window.clearAllData = clearAllData;
-    window.downloadCSV = downloadCSV;
+    window.stopCameraInstance = stopCameraInstance;
 </script>
 
 </body>
