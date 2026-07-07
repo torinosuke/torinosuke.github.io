@@ -125,7 +125,7 @@
             updateTable();
         }
 
-        // CSVファイルの読み込みイベント（ここが絶対に動くようになります）
+        // CSVファイルの読み込みイベント
         document.getElementById('csvFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -250,20 +250,22 @@
 </script>
 
 <script type="module">
+    // coreからは Symbology を削除
     import {
         DataCaptureContext,
         Camera,
         DataCaptureView,
         FrameSourceState,
-        VideoResolution,
-        Symbology
+        VideoResolution
     } from "@scandit/web-datacapture-core";
 
+    // barcodeの方に Symbology を追加
     import {
         BarcodeCapture,
         BarcodeCaptureSettings,
         BarcodeCaptureOverlay,
-        barcodeCaptureLoader
+        barcodeCaptureLoader,
+        Symbology
     } from "@scandit/web-datacapture-barcode";
 
     let context;
