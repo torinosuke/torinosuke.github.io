@@ -3,9 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>簡易棚卸システム（Scandit Web SDK v7 統合版）</title>
+    <title>簡易棚卸システム（Scandit Web SDK v7 修正統合版）</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "@scandit/web-datacapture-core": "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.6.14/build/js/index.js",
+            "@scandit/web-datacapture-barcode": "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.6.14/build/js/index.js"
+        }
+    }
+    </script>
 
     <style>
         body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f0f4f8; color: #333; }
@@ -24,7 +33,6 @@
             width: 100%; padding: 12px; margin: 5px 0 15px; box-sizing: border-box; font-size: 1.1rem; border: 1px solid #ccc; border-radius: 5px;
         }
         
-        /* スキャナー表示エリアのスタイル設定 */
         #scandit-barcode-picker { width: 100%; height: 350px; display: none; margin-bottom: 20px; border-radius: 8px; overflow: hidden; background-color: #555; }
         
         #scanResult { background: #e0f2f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; }
@@ -102,14 +110,14 @@
         FrameSourceState,
         VideoResolution,
         Symbology
-    } from "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.6.14/build/js/index.js";
+    } from "@scandit/web-datacapture-core";
 
     import {
         BarcodeCapture,
         BarcodeCaptureSettings,
         BarcodeCaptureOverlay,
         barcodeCaptureLoader
-    } from "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@7.6.14/build/js/index.js";
+    } from "@scandit/web-datacapture-barcode";
 
     // --- アプリケーションの状態管理 ---
     let masterData = {}; 
@@ -122,7 +130,7 @@
     let view;
     let isScannerInitialized = false;
 
-    // お手元のTanaoroshi-WebApp用のライセンスキー
+    // Tanaoroshi-WebApp用のライセンスキー
     const licenseKey = "Ap2n4AY6LkgGCmYsc//yHzEMQWGoPfhntho2aI4cbnGnSZjyQ1SSv55bzdMQdF06fWmAABpPVBwYFDWnLE50TbhJKmeqZgmHeU56Tvps6BZ2FRYOgxFjfN4Dz/QJUduBfwJNgccBG7e0UO0+vmFJE8h0SCwwX0X8ym91zRVxJynyZnT5Mkvjk55muFF4YvZZWE+iqSddSqtKSpCZ32mGlC5izwRzF5BGa21C3OtdCTU8fdYB9kwP7MhYYn9qc+HBxUE3lpJ7GgKpelJ5LUn6bcp09XArSgMsbUHnC4JFrCA9dS5sWkXjD8lPwkwhTx77/WNswyx+ugNjE04dmm/rknN/eqaHAu6OXh/RgqZdJXm5Sd/+zlj75sFVTDvrTAyNpHxjGfNxu1bgUV5oD2Ly3It2aV4TQvDWrjoXyZJqIhsUeG1TOzbgGzlyS346aG9aaDspnIg8l5OKADlqLg/skgR6PFLqYVxXTUZ9y7koW/9LYWOT+3a1sAd74+W1djxv31lBbmRF1WWxYJYZgw4OgCUKheJaGkT/9IiuQYRkqI8nQpC9xBOqDD2xb23uXnhdGIaWJl9PVhWKmlnb88d2R5XuDJzv5pfU5xCdV7BgRAFUSopMicUzNcScCwu8SFOK8lBiwg/6zq78zRsLHg8hAki8XV4yDQvfGjyNtROXz9Ye3dTzom0xnCBBlTN0rcbswXs7zR1qYq9ERojMRme/SEiA20ucHIh1rH8AfaIWy4q5TcKN1Vn3bA7nXyX1w6mblqNJRiDLeWJPaaHyDnhW3eWpYegjuiSQxr6G2Ijblhx+88rsXFGoomap4CqGMsOlmfU4ANrVSMRbYI9bc09TXbmDOZH886GaemXns859pJw0zgCEASbG8fkfmVjvxp09Tb/7ke3mFqvT4pWrREAwVxO1kBduuLIqtW3DlKY+7YCrv/TerBcC3gvN3Tb3ZCgwmBiART/7GNDkYTP3Aa3lBLACHiLri6N1xsr3Yq5K9zuvrtmY+gO+D70SRDXJTLhe0LPNWGGkA/n2SbJaKfUxcF7/rTGNsmm5ksVGcg2v7KfGImExlNTr2B7v3DMQjty4NStUFELJMNCF06CYD/UHvJ3qyeS/R86ZTVGHJ1mg/QKQy2DMJ/3ZjN9k6U8CvMEe0lvUQ9gGIxkx81QMHwsbaftaPae9RHwpwarPVZB3QT/izYOSPyXAO298l3aY7IF59f/eZg==";
 
     // --- ページロード時の初期復元処理 ---
@@ -154,7 +162,6 @@
                 results.data.forEach(row => {
                     if(row.length >= 2 && row[0]) {
                         const rawCode = row[0].trim();
-                        // 調剤包装単位二次元コードなどの「01」識別子を除去したキーも用意
                         const cleanCode = rawCode.replace(/^01/, ''); 
                         masterData[rawCode] = row[1].trim();
                         if (cleanCode !== rawCode) {
@@ -176,13 +183,12 @@
         if (isScannerInitialized) return;
 
         try {
-            // DataCaptureContextの生成（ライブラリ配置先に sdc-lib を明示）
+            // ライブラリ配置先（エンジンファイルの参照先）を指定
             context = await DataCaptureContext.forLicenseKey(licenseKey, {
                 libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.6.14/build/js/sdc-lib/",
                 moduleLoaders: [barcodeCaptureLoader()],
             });
 
-            // 背面カメラの設定
             camera = Camera.default;
             if (camera) {
                 const cameraSettings = BarcodeCapture.recommendedCameraSettings;
@@ -194,26 +200,22 @@
                 return;
             }
 
-            // 棚卸対象となる医薬品バーコードの規格を網羅
             const settings = new BarcodeCaptureSettings();
             settings.enableSymbologies([
-                Symbology.EAN13,          // 通常のJANコード（13桁）
-                Symbology.EAN8,           // 短縮JANコード
-                Symbology.Code128,        // 医療用GS1-128コード
-                Symbology.GS1DataMatrix,  // 医療用GS1二次元コード
-                Symbology.DataMatrix      // 汎用データマトリックス
+                Symbology.EAN13,          
+                Symbology.EAN8,           
+                Symbology.Code128,        
+                Symbology.GS1DataMatrix,  
+                Symbology.DataMatrix      
             ]);
 
             barcodeCapture = BarcodeCapture.forContext(context, settings);
 
-            // スキャン検知時のイベントリスナー
             barcodeCapture.addListener({
                 didScan: (barcodeCapture, session) => {
                     const barcode = session.newlyRecognizedBarcodes[0];
                     if (barcode) {
-                        barcodeCapture.isEnabled = false; // 二重読み込み防止
-                        
-                        // 画面描画のスレッドに安全に引き渡す
+                        barcodeCapture.isEnabled = false; 
                         requestAnimationFrame(() => {
                             onScanSuccess(barcode.data);
                         });
@@ -221,11 +223,9 @@
                 }
             });
 
-            // カメラビューの設定とHTML要素（#scandit-barcode-picker）への接続
             view = new DataCaptureView();
             await view.setContext(context);
             
-            // スキャン範囲を示す標準フレームオーバーレイを追加
             BarcodeCaptureOverlay.withBarcodeCaptureForView(barcodeCapture, view);
             
             const scannerElement = document.getElementById("scandit-barcode-picker");
@@ -263,7 +263,6 @@
         let searchCode = decodedText.trim();
         let name = masterData[searchCode];
 
-        // GS1-128などの頭につくアプリケーション識別子「01」を除去してマスタを再検索
         if (!name && searchCode.startsWith("01") && searchCode.length >= 14) {
             searchCode = searchCode.substring(2);
             name = masterData[searchCode];
@@ -271,26 +270,22 @@
         
         name = name || "マスタ未登録の薬品";
         
-        // スキャナーエリアを隠し、結果入力エリアを表示
         document.getElementById('scandit-barcode-picker').style.display = "none";
         document.getElementById('scanResult').style.display = "block";
         
         document.getElementById('displayCode').innerText = decodedText;
         document.getElementById('displayName').innerText = name;
         
-        // 数量入力フォームのフォーカス
         const qtyInput = document.getElementById('inputQty');
         qtyInput.value = "1"; 
         qtyInput.focus();
         qtyInput.select();
 
-        // 入力中はバッテリー消費を抑えるため一旦カメラをオフにする
         if (camera) {
             camera.switchToDesiredState(FrameSourceState.Off);
         }
     }
 
-    // 数量入力時のEnterキーイベントハンドラー
     document.getElementById('inputQty').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             addToList();
@@ -316,7 +311,6 @@
         localStorage.setItem('scannedList', JSON.stringify(scannedList));
         updateTable();
         
-        // 次のスキャンを自動開始
         startScanner();
     }
 
@@ -371,7 +365,7 @@
             csvContent += `"${item.code}","${safeName}",${item.qty}\n`;
         });
 
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excelでの文字化け防止 (UTF-8 BOM)
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); 
         const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
         const url = window.URL.createObjectURL(blob);
         
@@ -384,7 +378,7 @@
         a.click();
     }
 
-    // ★ type="module"内の関数をHTML側のインライン onclick 属性から呼び出せるように window オブジェクトへマッピング
+    // 各関数を window オブジェクトへマッピング
     window.startScanner = startScanner;
     window.cancelInput = cancelInput;
     window.addToList = addToList;
