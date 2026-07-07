@@ -250,7 +250,6 @@
 </script>
 
 <script type="module">
-    // coreからは Symbology を削除
     import {
         DataCaptureContext,
         Camera,
@@ -259,7 +258,6 @@
         VideoResolution
     } from "@scandit/web-datacapture-core";
 
-    // barcodeの方に Symbology を追加
     import {
         BarcodeCapture,
         BarcodeCaptureSettings,
@@ -279,8 +277,10 @@
     async function initScandit() {
         if (isScannerInitialized) return;
         try {
+            // 【変更箇所】libraryLocation のパスを v7 準拠の /build/ 直下に変更
+            // 情報源: Scandit Web SDK v7 Deployment Guide (https://docs.scandit.com/data-capture-sdk/web/configure-library-location.html)
             context = await DataCaptureContext.forLicenseKey(licenseKey, {
-                libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.6.14/build/js/sdc-lib/",
+                libraryLocation: "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-core@7.6.14/build/",
                 moduleLoaders: [barcodeCaptureLoader()],
             });
 
@@ -363,7 +363,6 @@
     function cancelInput() { startScanner(); }
     function stopCameraInstance() { if (camera) { camera.switchToDesiredState(FrameSourceState.Off); } }
 
-    // HTML側のボタンから呼び出せるように window オブジェクトに登録
     window.startScanner = startScanner;
     window.cancelInput = cancelInput;
     window.stopCameraInstance = stopCameraInstance;
